@@ -1,0 +1,9 @@
+node_modules
+.env
+.env.*
+**/keys
+**/*.pem
+**/*.key
+.git
+test
+npm-debug.log*

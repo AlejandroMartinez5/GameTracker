@@ -1,0 +1,49 @@
+services:
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "quit(db.adminCommand('ping').ok ? 0 : 1)"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  ms-auth:
+    build:
+      context: ./backend/ms-auth
+    restart: unless-stopped
+    init: true
+    env_file:
+      - ./backend/ms-auth/.env
+    environment:
+      PORT: "3003"
+    ports:
+      - "127.0.0.1:3003:3003"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    volumes:
+      - type: bind
+        source: ./backend/ms-auth/src/keys/private.pem
+        target: /app/src/keys/private.pem
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./backend/ms-auth/src/keys/public.pem
+        target: /app/src/keys/public.pem
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3003/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  mongo_data:
