@@ -1,0 +1,1 @@
+// Inicialización de archivo controllers del microservicio friends

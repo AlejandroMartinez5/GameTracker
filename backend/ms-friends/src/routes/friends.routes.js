@@ -1,0 +1,1 @@
+// Inicialización de archivo rutas del microservicio friends
