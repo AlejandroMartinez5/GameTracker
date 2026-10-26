@@ -1,2 +1,10 @@
 .env
 node_modules
+src/keys/private.key
+src/keys/public.key
+public.key
+private.key
+/backend/ms-auth/keys/private.pem
+/backend/ms-auth/src/keys/private.pem
+**/keys/*.pem
+**/keys/*.key
