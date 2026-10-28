@@ -146,7 +146,8 @@ async function login(data = {}) {
 
   const token = signToken({
     sub: String(user._id),
-    role: user.role
+    role: user.role,
+    emailVerified: user.emailVerified
   });
 
   return { token, user: toUserResponse(user) };
