@@ -1,6 +1,7 @@
 ﻿const bcrypt = require("bcrypt");
 const userRepository = require("../repositories/user.repository");
 const { signToken } = require("../middlewares/auth.middleware");
+const emailVerification = require("./email-verification.service");
 
 const PASSWORD_SALT_ROUNDS = 10;
 const PASSWORD_MIN_LENGTH = 8;
@@ -105,7 +106,18 @@ async function registerUser(data = {}) {
       profileImage
     });
 
-    return { user: toUserResponse(user) };
+    // La cuenta permanece creada aunque Gmail no esté disponible.
+    let verification;
+    try {
+      verification = await emailVerification.sendCode(user);
+    } catch {
+      verification = {
+        emailVerified: false,
+        message: "Cuenta creada. No se pudo enviar el código; inicia sesión y solicita el reenvío"
+      };
+    }
+
+    return { user: toUserResponse(user), verification };
   } catch (error) {
     if (error.code === DUPLICATE_KEY_ERROR) {
       throw createError("El email o username ya está registrado", 409);
