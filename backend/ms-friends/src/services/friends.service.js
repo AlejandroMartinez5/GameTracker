@@ -1,0 +1,1 @@
+// Inicialización de archivo service del microservicio friends
