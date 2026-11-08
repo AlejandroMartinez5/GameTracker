@@ -2,6 +2,8 @@ services:
   mongo:
     image: mongo:8.0
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:27017:27017"
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -40,6 +42,38 @@ services:
           create_host_path: false
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3003/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  ms-games:
+    build:
+      context: ./backend/ms-games
+    restart: unless-stopped
+    init: true
+    env_file:
+      - ./backend/ms-games/.env
+    environment:
+      PORT: "3009"
+      MONGODB_URI: mongodb://mongo:27017/gametracker_games
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+    ports:
+      - "127.0.0.1:3009:3009"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      ms-auth:
+        condition: service_healthy
+    volumes:
+      - type: bind
+        source: ./backend/ms-auth/src/keys/public.pem
+        target: /app/keys/public.pem
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3009/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 5
