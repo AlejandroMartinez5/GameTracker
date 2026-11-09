@@ -79,5 +79,55 @@ services:
       retries: 5
       start_period: 15s
 
+
+  moderation-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gametracker
+      POSTGRES_PASSWORD: ${MODERATION_DB_PASSWORD:-gametracker_dev}
+      POSTGRES_DB: gametracker_moderation
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - moderation_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gametracker -d gametracker_moderation"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ms-moderation:
+    build:
+      context: ./backend/ms-moderation
+    restart: unless-stopped
+    init: true
+    environment:
+      PORT: "3007"
+      DATABASE_URL: postgresql://gametracker:${MODERATION_DB_PASSWORD:-gametracker_dev}@moderation-db:5432/gametracker_moderation
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+      AUTH_SERVICE_URL: http://ms-auth:3003/api/auth
+      REVIEWS_SERVICE_URL: ${REVIEWS_SERVICE_URL:-http://host.docker.internal:3005/api}
+    ports:
+      - "127.0.0.1:3007:3007"
+    depends_on:
+      moderation-db:
+        condition: service_healthy
+      ms-auth:
+        condition: service_healthy
+    volumes:
+      - type: bind
+        source: ./backend/ms-auth/src/keys/public.pem
+        target: /app/keys/public.pem
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3007/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 volumes:
+  moderation_data:
   mongo_data:
