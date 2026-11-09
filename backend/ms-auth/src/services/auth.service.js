@@ -1,4 +1,4 @@
-﻿const bcrypt = require("bcrypt");
+const bcrypt = require("bcrypt");
 const userRepository = require("../repositories/user.repository");
 const { signToken } = require("../middlewares/auth.middleware");
 const emailVerification = require("./email-verification.service");
@@ -87,7 +87,7 @@ function toUserResponse(user) {
     profileImage: user.profileImage,
     role: user.role,
     emailVerified: user.emailVerified,
-    accountStatus: user.accountStatus
+    accountStatus: user.accountStatus === "SUSPENDED" && user.suspendedUntil && user.suspendedUntil <= new Date() ? "ACTIVE" : user.accountStatus
   };
 }
 
