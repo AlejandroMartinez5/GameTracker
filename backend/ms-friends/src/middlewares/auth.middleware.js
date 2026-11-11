@@ -1,39 +1,49 @@
-const fs = require("node:fs");
-const path = require("node:path");
-const jwt = require("jsonwebtoken");
+const { verifyToken } = require("../utils/jwt.util");
+const authRepository = require("../repositories/auth.repository");
 
-const publicKey = fs.readFileSync(
-  path.join(__dirname, "../keys/public.pem"),
-  "utf8"
-);
-
-function verifyToken(token) {
-  const payload = jwt.verify(token, publicKey, { algorithms: ["RS256"] });
-
-  if (typeof payload !== "object" || payload === null ||
-      typeof payload.sub !== "string" || !/^[a-f\d]{24}$/i.test(payload.sub) ||
-      !Number.isFinite(payload.exp)) {
-    throw new Error("Token sin identidad o expiración válidas");
-  }
-
-  return payload;
-}
-
-function authenticate(req, res, next) {
-  const authorization = req.get("authorization") || "";
-  const match = /^Bearer\s+(\S+)$/i.exec(authorization);
-
-  if (!match) {
-    return res.status(401).json({ message: "Token requerido" });
-  }
-
+const authMiddleware = async (req, res, next) => {
   try {
-    req.user = verifyToken(match[1]);
-  } catch {
-    return res.status(401).json({ message: "Token inválido o expirado" });
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "No autorizado" });
+    }
+
+    const token = authHeader.split(" ")[1];
+    const decoded = verifyToken(token);
+
+    if (!decoded.authId) {
+      return res.status(401).json({ error: "Token invalido" });
+    }
+
+    const user = await authRepository.findById(decoded.authId);
+
+    if (!user) {
+      return res.status(401).json({ error: "Usuario no encontrado" });
+    }
+
+    if (user.accountStatus === "BANNED") {
+      return res.status(403).json({ error: "Cuenta baneada" });
+    }
+
+    if (user.accountStatus === "SUSPENDED") {
+      return res.status(403).json({ error: "Cuenta suspendida temporalmente" });
+    }
+
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: "Token inválido" });
+  }
+};
+
+const requireAdmin = (req, res, next) => {
+  if (req.user?.role !== "ADMIN") {
+    return res.status(403).json({ error: "Se requiere rol de administrador" });
   }
 
-  return next();
-}
+  next();
+};
 
-module.exports = { authenticate, verifyToken };
+module.exports = authMiddleware;
+module.exports.requireAdmin = requireAdmin;
