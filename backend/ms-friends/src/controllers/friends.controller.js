@@ -1,32 +1,16 @@
-const authService = require("../services/auth.service");
+const friendsService = require("../services/friends.service");
 
-const healthCheck = async (req, res) => {
-  return res.status(200).json({
-    message: "ms-auth funcionando 🚀"
-  });
-};
-
-const register = async (req, res) => {
+const sendFriendRequest = async (req, res) => {
   try {
-    const { email, password, name, username, profileImage } = req.body;
-
-    if (!email || !password || !name || !username) {
-      return res.status(400).json({
-        message: "email, password, name y username son obligatorios"
-      });
-    }
-
-    const result = await authService.register({
-      email,
-      password,
-      name,
-      username,
-      profileImage
-    });
+    const { receiverAuthId } = req.body;
+    const request = await friendsService.sendFriendRequest(
+      req.user.authId,
+      receiverAuthId
+    );
 
     return res.status(201).json({
-      message: "Usuario registrado correctamente",
-      data: result
+      message: "Solicitud de amistad enviada correctamente",
+      data: request
     });
   } catch (error) {
     return res.status(error.status || 500).json({
@@ -35,21 +19,17 @@ const register = async (req, res) => {
   }
 };
 
-const login = async (req, res) => {
+const acceptFriendRequest = async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({
-        message: "email y password son obligatorios"
-      });
-    }
-
-    const result = await authService.login({ email, password });
+    const { requestId } = req.params;
+    const request = await friendsService.acceptFriendRequest(
+      req.user.authId,
+      requestId
+    );
 
     return res.status(200).json({
-      message: "Login exitoso",
-      data: result
+      message: "Solicitud de amistad aceptada correctamente",
+      data: request
     });
   } catch (error) {
     return res.status(error.status || 500).json({
@@ -58,37 +38,17 @@ const login = async (req, res) => {
   }
 };
 
-const verifyEmail = async (req, res) => {
+const rejectFriendRequest = async (req, res) => {
   try {
-    const { email, code } = req.body;
-
-    const result = await authService.verifyEmail({ email, code });
+    const { requestId } = req.params;
+    const request = await friendsService.rejectFriendRequest(
+      req.user.authId,
+      requestId
+    );
 
     return res.status(200).json({
-      message: "Correo verificado correctamente",
-      data: result
-    });
-  } catch (error) {
-    const response = {
-      message: error.message || "Error interno del servidor"
-    };
-
-    if (error.data) {
-      response.data = error.data;
-    }
-
-    return res.status(error.status || 500).json(response);
-  }
-};
-
-const resendVerificationEmail = async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    await authService.resendVerificationEmail({ email });
-
-    return res.status(200).json({
-      message: "Si el correo existe y no esta verificado, se enviaron instrucciones"
+      message: "Solicitud de amistad rechazada correctamente",
+      data: request
     });
   } catch (error) {
     return res.status(error.status || 500).json({
@@ -97,14 +57,13 @@ const resendVerificationEmail = async (req, res) => {
   }
 };
 
-const forgotPassword = async (req, res) => {
+const cancelFriendRequest = async (req, res) => {
   try {
-    const { email } = req.body;
-
-    await authService.forgotPassword({ email });
+    const { requestId } = req.params;
+    await friendsService.cancelFriendRequest(req.user.authId, requestId);
 
     return res.status(200).json({
-      message: "Si el correo existe, se enviaron instrucciones para recuperar la contrasena"
+      message: "Solicitud de amistad cancelada correctamente"
     });
   } catch (error) {
     return res.status(error.status || 500).json({
@@ -113,14 +72,13 @@ const forgotPassword = async (req, res) => {
   }
 };
 
-const resetPassword = async (req, res) => {
+const removeFriend = async (req, res) => {
   try {
-    const { token, code, password } = req.body;
-
-    await authService.resetPassword({ token: token || code, password });
+    const { friendAuthId } = req.params;
+    await friendsService.removeFriend(req.user.authId, friendAuthId);
 
     return res.status(200).json({
-      message: "Contrasena actualizada correctamente"
+      message: "Amistad eliminada correctamente"
     });
   } catch (error) {
     return res.status(error.status || 500).json({
@@ -129,19 +87,14 @@ const resetPassword = async (req, res) => {
   }
 };
 
-const changePassword = async (req, res) => {
+const getFriends = async (req, res) => {
   try {
-    const authId = req.user.authId;
-    const { currentPassword, newPassword } = req.body;
-
-    await authService.changePassword({
-      authId,
-      currentPassword,
-      newPassword
-    });
+    const result = await friendsService.getFriends(req.user.authId, req.query);
 
     return res.status(200).json({
-      message: "Contrasena cambiada correctamente"
+      message: "Amigos obtenidos correctamente",
+      data: result.data,
+      pagination: result.pagination
     });
   } catch (error) {
     return res.status(error.status || 500).json({
@@ -150,36 +103,15 @@ const changePassword = async (req, res) => {
   }
 };
 
-const updateUsername = async (req, res) => {
-  try {
-    const authId = req.user.authId;
-    const { username } = req.body;
-
-    const result = await authService.updateUsername({
-      authId,
-      username
-    });
-
-    return res.status(200).json({
-      message: "Username actualizado correctamente",
-      data: result
-    });
-  } catch (error) {
-    return res.status(error.status || 500).json({
-      message: error.message || "Error interno del servidor"
-    });
-  }
-};
-
-const getAccountStatus = async (req, res) => {
+const getPublicFriends = async (req, res) => {
   try {
     const { authId } = req.params;
-
-    const result = await authService.getAccountStatus(authId);
+    const result = await friendsService.getPublicFriends(authId, req.query);
 
     return res.status(200).json({
-      message: "Estado de cuenta obtenido correctamente",
-      data: result
+      message: "Amigos del usuario obtenidos correctamente",
+      data: result.data,
+      pagination: result.pagination
     });
   } catch (error) {
     return res.status(error.status || 500).json({
@@ -188,36 +120,30 @@ const getAccountStatus = async (req, res) => {
   }
 };
 
-const getAdminStats = async (req, res) => {
-  try {
-    const result = await authService.getAdminStats();
-
-    return res.status(200).json({
-      message: "Estadisticas de usuarios obtenidas correctamente",
-      data: result
-    });
-  } catch (error) {
-    return res.status(error.status || 500).json({
-      message: error.message || "Error interno del servidor"
-    });
-  }
-};
-
-const suspendUser = async (req, res) => {
+const getFriendsSummary = async (req, res) => {
   try {
     const { authId } = req.params;
-    const { suspendedUntil, reason } = req.body;
+    const summary = await friendsService.getFriendsSummary(authId);
 
-    const result = await authService.suspendUser({
-      authId,
-      suspendedUntil,
-      reason,
-      adminAuthId: req.user.authId
+    return res.status(200).json(summary);
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      message: error.message || "Error interno del servidor"
     });
+  }
+};
+
+const getIncomingRequests = async (req, res) => {
+  try {
+    const result = await friendsService.getIncomingRequests(
+      req.user.authId,
+      req.query
+    );
 
     return res.status(200).json({
-      message: "Usuario suspendido correctamente",
-      data: result
+      message: "Solicitudes recibidas obtenidas correctamente",
+      data: result.data,
+      pagination: result.pagination
     });
   } catch (error) {
     return res.status(error.status || 500).json({
@@ -226,20 +152,17 @@ const suspendUser = async (req, res) => {
   }
 };
 
-const banUser = async (req, res) => {
+const getOutgoingRequests = async (req, res) => {
   try {
-    const { authId } = req.params;
-    const { reason } = req.body;
-
-    const result = await authService.banUser({
-      authId,
-      reason,
-      adminAuthId: req.user.authId
-    });
+    const result = await friendsService.getOutgoingRequests(
+      req.user.authId,
+      req.query
+    );
 
     return res.status(200).json({
-      message: "Usuario baneado correctamente",
-      data: result
+      message: "Solicitudes enviadas obtenidas correctamente",
+      data: result.data,
+      pagination: result.pagination
     });
   } catch (error) {
     return res.status(error.status || 500).json({
@@ -248,19 +171,15 @@ const banUser = async (req, res) => {
   }
 };
 
-const unbanUser = async (req, res) => {
+const getRelationshipStatus = async (req, res) => {
   try {
-    const { authId } = req.params;
+    const { otherAuthId } = req.params;
+    const result = await friendsService.getRelationshipStatus(
+      req.user.authId,
+      otherAuthId
+    );
 
-    const result = await authService.unbanUser({
-      authId,
-      adminAuthId: req.user.authId
-    });
-
-    return res.status(200).json({
-      message: "Usuario reactivado correctamente",
-      data: result
-    });
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(error.status || 500).json({
       message: error.message || "Error interno del servidor"
@@ -269,18 +188,15 @@ const unbanUser = async (req, res) => {
 };
 
 module.exports = {
-  healthCheck,
-  register,
-  login,
-  verifyEmail,
-  resendVerificationEmail,
-  forgotPassword,
-  resetPassword,
-  changePassword,
-  updateUsername,
-  getAccountStatus,
-  getAdminStats,
-  suspendUser,
-  banUser,
-  unbanUser
+  sendFriendRequest,
+  acceptFriendRequest,
+  rejectFriendRequest,
+  cancelFriendRequest,
+  removeFriend,
+  getFriends,
+  getPublicFriends,
+  getFriendsSummary,
+  getIncomingRequests,
+  getOutgoingRequests,
+  getRelationshipStatus
 };
