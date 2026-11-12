@@ -30,7 +30,14 @@ const parseId = (value, fieldName) => {
 const validateReviewData = ({ rating, title, content }) => {
   const parsedRating = Number(rating);
 
-  if (rating === undefined || rating === null || rating === "" || !Number.isInteger(parsedRating) || parsedRating < 1 || parsedRating > 5) {
+  if (
+    rating === undefined ||
+    rating === null ||
+    rating === "" ||
+    !Number.isInteger(parsedRating) ||
+    parsedRating < 1 ||
+    parsedRating > 5
+  ) {
     throw createError("La calificación debe ser un entero entre 1 y 5", 400);
   }
 
