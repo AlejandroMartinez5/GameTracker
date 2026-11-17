@@ -3,7 +3,8 @@ const mongoose = require("mongoose");
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
-    profileImage: { type: String, default: null },
+    profileImageData: { type: Buffer, default: null, select: false },
+    profileImageMimeType: { type: String, default: null },
     email: {
       type: String,
       required: true,

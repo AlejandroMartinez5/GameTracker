@@ -21,7 +21,15 @@ function requireAdmin(req, _res, next) {
   next();
 }
 function publicProfile(user) {
-  return { authId: String(user._id), name: user.name, username: user.username, profileImage: user.profileImage, createdAt: user.createdAt };
+  return {
+    authId: String(user._id),
+    name: user.name,
+    username: user.username,
+    profileImage: user.profileImageMimeType
+      ? `/api/auth/users/${user._id}/profile-image`
+      : null,
+    createdAt: user.createdAt
+  };
 }
 async function getPublicProfile(req, res) {
   res.json({ data: publicProfile(await findUser(req.params.authId)) });
@@ -42,7 +50,12 @@ async function moderate(req, res) {
 async function removeProfilePhoto(req, res) {
   const user = await findUser(req.params.authId);
   if (user.role === 'ADMIN') throw error('No puedes moderar una cuenta de administrador', 403);
-  await User.updateOne({ _id: user._id }, { $set: { profileImage: null } });
+  await User.updateOne({ _id: user._id }, {
+    $set: {
+      profileImageData: null,
+      profileImageMimeType: null
+    }
+  });
   res.json({ data: { authId: String(user._id), profileImage: null } });
 }
 module.exports = { requireActiveUser, requireAdmin, getPublicProfile, moderate, removeProfilePhoto };

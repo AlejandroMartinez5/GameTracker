@@ -1,19 +1,76 @@
 const { pool } = require("../config/db");
 
-const createReview = async ({ authId, igdbId, rating, title, content, imageUrl = null }) => {
+const createReview = async ({
+  authId,
+  igdbId,
+  rating,
+  title,
+  content,
+  image = null
+}) => {
   const query = `
-    INSERT INTO reviews (auth_id, igdb_id, rating, title, content, image_url)
-    VALUES ($1, $2, $3, $4, $5, $6)
+    INSERT INTO reviews (
+      auth_id, igdb_id, rating, title, content,
+      image_data, image_mime_type, image_size
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING *
   `;
 
-  const result = await pool.query(query, [authId, igdbId, rating, title, content, imageUrl]);
-  return result.rows[0];
+  const result = await pool.query(query, [
+    authId,
+    igdbId,
+    rating,
+    title,
+    content,
+    image?.data || null,
+    image?.mimeType || null,
+    image?.size || null
+  ]);
+
+  if (!image) {
+    return toPublicReview(result.rows[0]);
+  }
+
+  const imageUrl = `/api/reviews/${result.rows[0].id}/image`;
+  const updated = await pool.query(
+    `UPDATE reviews SET image_url = $1 WHERE id = $2 RETURNING *`,
+    [imageUrl, result.rows[0].id]
+  );
+
+  return toPublicReview(updated.rows[0]);
+};
+
+const reviewFields = `
+  id, auth_id, igdb_id, rating, title, content,
+  CASE
+    WHEN image_data IS NOT NULL THEN '/api/reviews/' || id || '/image'
+    ELSE image_url
+  END AS image_url,
+  image_mime_type, image_size,
+  (image_data IS NOT NULL) AS has_image,
+  created_at, updated_at
+`;
+
+const toPublicReview = (review) => {
+  if (!review) {
+    return review;
+  }
+
+  const { image_data: imageData, ...publicReview } = review;
+
+  return {
+    ...publicReview,
+    image_url: imageData
+      ? `/api/reviews/${review.id}/image`
+      : publicReview.image_url,
+    has_image: Boolean(imageData) || Boolean(publicReview.has_image)
+  };
 };
 
 const findById = async (reviewId) => {
   const query = `
-    SELECT *
+    SELECT ${reviewFields}
     FROM reviews
     WHERE id = $1
   `;
@@ -24,19 +81,19 @@ const findById = async (reviewId) => {
 
 const findByUserAndGame = async ({ authId, igdbId }) => {
   const query = `
-    SELECT *
+    SELECT ${reviewFields}
     FROM reviews
     WHERE auth_id = $1 AND igdb_id = $2
   `;
 
   const result = await pool.query(query, [authId, igdbId]);
-  return result.rows[0] || null;
+  return toPublicReview(result.rows[0]);
 };
 
 const findByGameId = async (igdbId, { limit, offset }, authId = null) => {
   const query = `
     WITH paginated_reviews AS (
-      SELECT *
+      SELECT ${reviewFields}
       FROM reviews
       WHERE igdb_id = $1
       ORDER BY created_at DESC
@@ -96,7 +153,7 @@ const getGameRatingSummary = async (igdbId) => {
 
 const findByUser = async (authId, { limit, offset }) => {
   const query = `
-    SELECT *
+    SELECT ${reviewFields}
     FROM reviews
     WHERE auth_id = $1
     ORDER BY created_at DESC
@@ -143,7 +200,7 @@ const updateReview = async ({ reviewId, rating, title, content }) => {
   `;
 
   const result = await pool.query(query, [rating, title, content, reviewId]);
-  return result.rows[0] || null;
+  return toPublicReview(result.rows[0]);
 };
 
 const deleteReview = async (reviewId) => {
@@ -154,7 +211,7 @@ const deleteReview = async (reviewId) => {
   `;
 
   const result = await pool.query(query, [reviewId]);
-  return result.rows[0] || null;
+  return toPublicReview(result.rows[0]);
 };
 
 const updateReviewImage = async ({ reviewId, imageUrl }) => {
@@ -162,12 +219,50 @@ const updateReviewImage = async ({ reviewId, imageUrl }) => {
     UPDATE reviews
     SET
       image_url = $1,
+      image_data = NULL,
+      image_mime_type = NULL,
+      image_size = NULL,
       updated_at = CURRENT_TIMESTAMP
     WHERE id = $2
     RETURNING *
   `;
 
   const result = await pool.query(query, [imageUrl, reviewId]);
+  return toPublicReview(result.rows[0]);
+};
+
+const updateReviewImageData = async ({ reviewId, image }) => {
+  const query = `
+    UPDATE reviews
+    SET
+      image_url = $1,
+      image_data = $2,
+      image_mime_type = $3,
+      image_size = $4,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $5
+    RETURNING *
+  `;
+
+  const result = await pool.query(query, [
+    `/api/reviews/${reviewId}/image`,
+    image.data,
+    image.mimeType,
+    image.size,
+    reviewId
+  ]);
+
+  return toPublicReview(result.rows[0]);
+};
+
+const getReviewImage = async (reviewId) => {
+  const result = await pool.query(
+    `SELECT image_data, image_mime_type, image_size
+     FROM reviews
+     WHERE id = $1 AND image_data IS NOT NULL`,
+    [reviewId]
+  );
+
   return result.rows[0] || null;
 };
 
@@ -218,6 +313,8 @@ module.exports = {
   updateReview,
   deleteReview,
   updateReviewImage,
+  updateReviewImageData,
+  getReviewImage,
   likeReview,
   unlikeReview,
   countLikes

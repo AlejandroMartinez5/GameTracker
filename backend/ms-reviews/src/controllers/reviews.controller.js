@@ -4,6 +4,18 @@ const getToken = (req) => {
   return (req.get("authorization") || "").split(" ")[1];
 };
 
+const getImage = (file) => {
+  if (!file) {
+    return null;
+  }
+
+  return {
+    data: file.buffer,
+    mimeType: file.mimetype,
+    size: file.size
+  };
+};
+
 const handleError = (res, error, fallbackMessage) => {
   return res.status(error.status || 500).json({
     message: error.status ? error.message : fallbackMessage
@@ -12,7 +24,10 @@ const handleError = (res, error, fallbackMessage) => {
 
 const createReview = async (req, res) => {
   try {
-    const review = await reviewsService.createReview(req.body || {}, req.user, {
+    const review = await reviewsService.createReview({
+      ...(req.body || {}),
+      image: getImage(req.file)
+    }, req.user, {
       token: getToken(req)
     });
 
@@ -88,7 +103,7 @@ const updateReview = async (req, res) => {
   try {
     const review = await reviewsService.updateReview(
       req.params.reviewId,
-      req.body || {},
+      { ...(req.body || {}), image: getImage(req.file) },
       req.user
     );
 
@@ -122,6 +137,45 @@ const removeReviewImage = async (req, res) => {
       message: "Imagen de la reseña eliminada correctamente",
       data: result
     });
+  } catch (error) {
+    return handleError(res, error, "Error interno del servidor");
+  }
+};
+
+const addReviewImage = async (req, res) => {
+  try {
+    const image = getImage(req.file);
+
+    if (!image) {
+      return res.status(400).json({ message: "Debes enviar una imagen" });
+    }
+
+    const result = await reviewsService.addReviewImage(
+      req.params.reviewId,
+      image,
+      req.user
+    );
+
+    return res.status(200).json({
+      message: "Imagen de la reseña actualizada correctamente",
+      data: result
+    });
+  } catch (error) {
+    return handleError(res, error, "Error interno del servidor");
+  }
+};
+
+const getReviewImage = async (req, res) => {
+  try {
+    const image = await reviewsService.getReviewImage(req.params.reviewId);
+
+    res.set({
+      "Content-Type": image.image_mime_type,
+      "Content-Length": String(image.image_size),
+      "Cache-Control": "public, max-age=3600"
+    });
+
+    return res.status(200).send(image.image_data);
   } catch (error) {
     return handleError(res, error, "Error interno del servidor");
   }
@@ -169,6 +223,8 @@ module.exports = {
   updateReview,
   deleteReview,
   removeReviewImage,
+  addReviewImage,
+  getReviewImage,
   likeReview,
   unlikeReview,
   getReviewLikes

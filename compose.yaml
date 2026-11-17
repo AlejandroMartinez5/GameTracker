@@ -106,6 +106,7 @@ services:
       - ./backend/ms-auth/.env
     environment:
       PORT: "3003"
+      MAX_IMAGE_UPLOAD_BYTES: ${MAX_IMAGE_UPLOAD_BYTES:-5242880}
     ports:
       - "127.0.0.1:3003:3003"
     depends_on:
@@ -272,6 +273,7 @@ services:
       GAMES_SERVICE_URL: http://ms-games:3009/api/games
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-gametracker}:${RABBITMQ_PASSWORD:-gametracker_dev}@rabbitmq:5672
       SERVICE_TIMEOUT_MS: "10000"
+      MAX_IMAGE_UPLOAD_BYTES: ${MAX_IMAGE_UPLOAD_BYTES:-5242880}
     ports:
       - "127.0.0.1:3005:3005"
     depends_on:

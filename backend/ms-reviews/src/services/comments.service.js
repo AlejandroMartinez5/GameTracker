@@ -56,14 +56,15 @@ const isOwnerOrAdmin = (comment, user) => {
   return comment.auth_id === user.authId || user.role === "ADMIN";
 };
 
-const createComment = async (reviewId, { content }, user) => {
+const createComment = async (reviewId, { content, image = null }, user) => {
   const review = await getExistingReview(reviewId);
   const text = validateContent(content);
 
   const comment = await commentsRepository.createComment({
     reviewId: review.id,
     authId: user.authId,
-    content: text
+    content: text,
+    image
   });
 
   events.publishReviewCommented({ review, comment });
@@ -128,6 +129,30 @@ const removeCommentImage = async (commentId, user) => {
   };
 };
 
+const addCommentImage = async (commentId, image, user) => {
+  const comment = await getExistingComment(commentId);
+
+  if (!isOwnerOrAdmin(comment, user)) {
+    throw createError("Solo el autor puede cambiar la imagen", 403);
+  }
+
+  return commentsRepository.updateCommentImageData({
+    commentId: comment.id,
+    image
+  });
+};
+
+const getCommentImage = async (commentId) => {
+  const comment = await getExistingComment(commentId);
+  const image = await commentsRepository.getCommentImage(comment.id);
+
+  if (!image) {
+    throw createError("El comentario no tiene imagen", 404);
+  }
+
+  return image;
+};
+
 const likeComment = async (commentId, user) => {
   const comment = await getExistingComment(commentId);
 
@@ -171,6 +196,8 @@ module.exports = {
   getCommentById,
   deleteComment,
   removeCommentImage,
+  addCommentImage,
+  getCommentImage,
   likeComment,
   unlikeComment,
   getCommentLikes

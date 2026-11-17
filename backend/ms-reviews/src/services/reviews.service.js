@@ -94,7 +94,11 @@ const ensureGameExists = async ({ igdbId, token }) => {
   await gamesClient.assertGameExists({ igdbId, token });
 };
 
-const createReview = async ({ igdbId, rating, title, content }, user, { token } = {}) => {
+const createReview = async (
+  { igdbId, rating, title, content, image = null },
+  user,
+  { token } = {}
+) => {
   const parsedIgdbId = parseId(igdbId, "igdbId");
   const data = validateReviewData({ rating, title, content });
 
@@ -113,7 +117,8 @@ const createReview = async ({ igdbId, rating, title, content }, user, { token } 
     const review = await reviewsRepository.createReview({
       authId: user.authId,
       igdbId: parsedIgdbId,
-      ...data
+      ...data,
+      image
     });
 
     events.publishReviewCreated({ review });
@@ -187,7 +192,11 @@ const getUserReviewsSummary = async (authId) => {
   return { authId, reviewsCount, totalLikesReceived };
 };
 
-const updateReview = async (reviewId, { rating, title, content }, user) => {
+const updateReview = async (
+  reviewId,
+  { rating, title, content, image = null },
+  user
+) => {
   const review = await getExistingReview(reviewId);
 
   if (!isOwner(review, user)) {
@@ -203,7 +212,19 @@ const updateReview = async (reviewId, { rating, title, content }, user) => {
 
   const data = validateReviewData({ rating, title, content });
 
-  return reviewsRepository.updateReview({ reviewId: review.id, ...data });
+  const updatedReview = await reviewsRepository.updateReview({
+    reviewId: review.id,
+    ...data
+  });
+
+  if (!image) {
+    return updatedReview;
+  }
+
+  return reviewsRepository.updateReviewImageData({
+    reviewId: review.id,
+    image
+  });
 };
 
 const deleteReview = async (reviewId, user) => {
@@ -233,6 +254,30 @@ const removeReviewImage = async (reviewId, user) => {
   });
 
   return { reviewId: review.id, imageUrl: null, review: updatedReview };
+};
+
+const addReviewImage = async (reviewId, image, user) => {
+  const review = await getExistingReview(reviewId);
+
+  if (!isOwner(review, user)) {
+    throw createError("Solo el autor puede cambiar la imagen", 403);
+  }
+
+  return reviewsRepository.updateReviewImageData({
+    reviewId: review.id,
+    image
+  });
+};
+
+const getReviewImage = async (reviewId) => {
+  const review = await getExistingReview(reviewId);
+  const image = await reviewsRepository.getReviewImage(review.id);
+
+  if (!image) {
+    throw createError("La reseña no tiene imagen", 404);
+  }
+
+  return image;
 };
 
 const likeReview = async (reviewId, user) => {
@@ -282,6 +327,8 @@ module.exports = {
   updateReview,
   deleteReview,
   removeReviewImage,
+  addReviewImage,
+  getReviewImage,
   likeReview,
   unlikeReview,
   getReviewLikes

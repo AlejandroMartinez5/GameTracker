@@ -1,20 +1,68 @@
 const { pool } = require("../config/db");
 
-const createComment = async ({ reviewId, authId, content, imageUrl = null }) => {
+const createComment = async ({ reviewId, authId, content, image = null }) => {
   const query = `
-    INSERT INTO comments (review_id, auth_id, content, image_url)
-    VALUES ($1, $2, $3, $4)
+    INSERT INTO comments (
+      review_id, auth_id, content,
+      image_data, image_mime_type, image_size
+    )
+    VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING *
   `;
 
-  const result = await pool.query(query, [reviewId, authId, content, imageUrl]);
-  return result.rows[0];
+  const result = await pool.query(query, [
+    reviewId,
+    authId,
+    content,
+    image?.data || null,
+    image?.mimeType || null,
+    image?.size || null
+  ]);
+
+  if (!image) {
+    return toPublicComment(result.rows[0]);
+  }
+
+  const imageUrl = `/api/comments/${result.rows[0].id}/image`;
+  const updated = await pool.query(
+    `UPDATE comments SET image_url = $1 WHERE id = $2 RETURNING *`,
+    [imageUrl, result.rows[0].id]
+  );
+
+  return toPublicComment(updated.rows[0]);
+};
+
+const commentFields = `
+  id, review_id, auth_id, content,
+  CASE
+    WHEN image_data IS NOT NULL THEN '/api/comments/' || id || '/image'
+    ELSE image_url
+  END AS image_url,
+  image_mime_type, image_size,
+  (image_data IS NOT NULL) AS has_image,
+  created_at, updated_at
+`;
+
+const toPublicComment = (comment) => {
+  if (!comment) {
+    return comment;
+  }
+
+  const { image_data: imageData, ...publicComment } = comment;
+
+  return {
+    ...publicComment,
+    image_url: imageData
+      ? `/api/comments/${comment.id}/image`
+      : publicComment.image_url,
+    has_image: Boolean(imageData) || Boolean(publicComment.has_image)
+  };
 };
 
 const findByReviewId = async (reviewId, { limit, offset }, authId = null) => {
   const query = `
     WITH paginated_comments AS (
-      SELECT *
+      SELECT ${commentFields}
       FROM comments
       WHERE review_id = $1
       ORDER BY created_at ASC
@@ -67,13 +115,13 @@ const findImageUrlsByReviewId = async (reviewId) => {
 
 const findById = async (commentId) => {
   const query = `
-    SELECT *
+    SELECT ${commentFields}
     FROM comments
     WHERE id = $1
   `;
 
   const result = await pool.query(query, [commentId]);
-  return result.rows[0] || null;
+  return toPublicComment(result.rows[0]);
 };
 
 const updateComment = async ({ commentId, content }) => {
@@ -87,7 +135,7 @@ const updateComment = async ({ commentId, content }) => {
   `;
 
   const result = await pool.query(query, [content, commentId]);
-  return result.rows[0] || null;
+  return toPublicComment(result.rows[0]);
 };
 
 const deleteComment = async (commentId) => {
@@ -98,7 +146,7 @@ const deleteComment = async (commentId) => {
   `;
 
   const result = await pool.query(query, [commentId]);
-  return result.rows[0] || null;
+  return toPublicComment(result.rows[0]);
 };
 
 const updateCommentImage = async ({ commentId, imageUrl }) => {
@@ -106,12 +154,50 @@ const updateCommentImage = async ({ commentId, imageUrl }) => {
     UPDATE comments
     SET
       image_url = $1,
+      image_data = NULL,
+      image_mime_type = NULL,
+      image_size = NULL,
       updated_at = CURRENT_TIMESTAMP
     WHERE id = $2
     RETURNING *
   `;
 
   const result = await pool.query(query, [imageUrl, commentId]);
+  return toPublicComment(result.rows[0]);
+};
+
+const updateCommentImageData = async ({ commentId, image }) => {
+  const query = `
+    UPDATE comments
+    SET
+      image_url = $1,
+      image_data = $2,
+      image_mime_type = $3,
+      image_size = $4,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $5
+    RETURNING *
+  `;
+
+  const result = await pool.query(query, [
+    `/api/comments/${commentId}/image`,
+    image.data,
+    image.mimeType,
+    image.size,
+    commentId
+  ]);
+
+  return toPublicComment(result.rows[0]);
+};
+
+const getCommentImage = async (commentId) => {
+  const result = await pool.query(
+    `SELECT image_data, image_mime_type, image_size
+     FROM comments
+     WHERE id = $1 AND image_data IS NOT NULL`,
+    [commentId]
+  );
+
   return result.rows[0] || null;
 };
 
@@ -158,6 +244,8 @@ module.exports = {
   updateComment,
   deleteComment,
   updateCommentImage,
+  updateCommentImageData,
+  getCommentImage,
   likeComment,
   unlikeComment,
   countLikes

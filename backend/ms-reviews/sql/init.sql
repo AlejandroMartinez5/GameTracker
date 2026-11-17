@@ -6,6 +6,9 @@ CREATE TABLE IF NOT EXISTS reviews (
   title VARCHAR(150),
   content TEXT NOT NULL,
   image_url TEXT,
+  image_data BYTEA,
+  image_mime_type VARCHAR(50),
+  image_size INTEGER,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (auth_id, igdb_id)
@@ -25,6 +28,9 @@ CREATE TABLE IF NOT EXISTS comments (
   auth_id VARCHAR(255) NOT NULL,
   content TEXT NOT NULL,
   image_url TEXT,
+  image_data BYTEA,
+  image_mime_type VARCHAR(50),
+  image_size INTEGER,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -51,3 +57,11 @@ ON review_likes (created_at DESC, review_id);
 
 CREATE INDEX IF NOT EXISTS idx_comment_likes_created_comment
 ON comment_likes (created_at DESC, comment_id);
+
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS image_data BYTEA;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS image_mime_type VARCHAR(50);
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS image_size INTEGER;
+
+ALTER TABLE comments ADD COLUMN IF NOT EXISTS image_data BYTEA;
+ALTER TABLE comments ADD COLUMN IF NOT EXISTS image_mime_type VARCHAR(50);
+ALTER TABLE comments ADD COLUMN IF NOT EXISTS image_size INTEGER;

@@ -84,7 +84,9 @@ function toUserResponse(user) {
     name: user.name,
     email: user.email,
     username: user.username,
-    profileImage: user.profileImage,
+    profileImage: user.profileImageMimeType
+      ? `/api/auth/users/${user._id}/profile-image`
+      : null,
     role: user.role,
     emailVerified: user.emailVerified,
     accountStatus: user.accountStatus === "SUSPENDED" && user.suspendedUntil && user.suspendedUntil <= new Date() ? "ACTIVE" : user.accountStatus
@@ -94,7 +96,13 @@ function toUserResponse(user) {
 async function registerUser(data = {}) {
   validateRegistration(data);
 
-  const { email, username, name, password, profileImage } = data;
+  const {
+    email,
+    username,
+    name,
+    password,
+    profileImageData
+  } = data;
   const passwordHash = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
 
   try {
@@ -103,7 +111,8 @@ async function registerUser(data = {}) {
       username: username.trim().toLowerCase(),
       name: name.trim(),
       passwordHash,
-      profileImage
+      profileImageData: profileImageData?.data,
+      profileImageMimeType: profileImageData?.mimeType
     });
 
     // La cuenta permanece creada aunque Gmail no esté disponible.
@@ -164,8 +173,68 @@ async function getCurrentUser(id) {
   return toUserResponse(user);
 }
 
+async function updateProfile(id, { name, image = null } = {}) {
+  const user = await userRepository.findById(id);
+
+  if (!user) {
+    throw createError("Cuenta no encontrada", 404);
+  }
+
+  const changes = {};
+
+  if (name !== undefined) {
+    if (!isNonEmptyString(name) || name.trim().length > 100) {
+      throw createError("El nombre debe tener entre 1 y 100 caracteres", 400);
+    }
+
+    changes.name = name.trim();
+  }
+
+  if (image) {
+    changes.profileImageData = image.data;
+    changes.profileImageMimeType = image.mimeType;
+  }
+
+  if (Object.keys(changes).length === 0) {
+    throw createError("No hay cambios para actualizar", 400);
+  }
+
+  return toUserResponse(await userRepository.updateUserById(id, changes));
+}
+
+async function removeProfileImage(id) {
+  const user = await userRepository.findById(id);
+
+  if (!user) {
+    throw createError("Cuenta no encontrada", 404);
+  }
+
+  await userRepository.updateUserById(id, {
+    profileImageData: null,
+    profileImageMimeType: null
+  });
+
+  return { authId: String(id), profileImage: null };
+}
+
+async function getProfileImage(id) {
+  const user = await userRepository.findProfileImageById(id);
+
+  if (!user || !user.profileImageData) {
+    throw createError("El usuario no tiene imagen de perfil", 404);
+  }
+
+  return {
+    data: user.profileImageData,
+    mimeType: user.profileImageMimeType,
+  };
+}
+
 module.exports = {
   registerUser,
   login,
-  getCurrentUser
+  getCurrentUser,
+  updateProfile,
+  removeProfileImage,
+  getProfileImage
 };
