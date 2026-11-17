@@ -47,6 +47,23 @@ services:
       timeout: 5s
       retries: 20
 
+  user-library-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gametracker
+      POSTGRES_PASSWORD: ${LIBRARY_DB_PASSWORD:-gametracker_dev}
+      POSTGRES_DB: gametracker_user_library
+    ports:
+      - "127.0.0.1:5437:5432"
+    volumes:
+      - user_library_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gametracker -d gametracker_user_library"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   notifications-db:
     image: postgres:17-alpine
     restart: unless-stopped
@@ -177,6 +194,39 @@ services:
       retries: 5
       start_period: 15s
 
+  ms-user-library:
+    build:
+      context: ./backend/ms-user-library
+    restart: unless-stopped
+    init: true
+    environment:
+      PORT: "3010"
+      DATABASE_URL: postgresql://gametracker:${LIBRARY_DB_PASSWORD:-gametracker_dev}@user-library-db:5432/gametracker_user_library
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-gametracker}:${RABBITMQ_PASSWORD:-gametracker_dev}@rabbitmq:5672
+    ports:
+      - "127.0.0.1:3010:3010"
+    depends_on:
+      user-library-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      ms-auth:
+        condition: service_healthy
+    volumes:
+      - type: bind
+        source: ./backend/ms-auth/src/keys/public.pem
+        target: /app/keys/public.pem
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3010/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
   ms-notifications:
     build:
       context: ./backend/ms-notifications
@@ -299,6 +349,7 @@ services:
       start_period: 15s
 volumes:
   friends_data:
+  user_library_data:
   moderation_data:
   mongo_data:
   notifications_data:
