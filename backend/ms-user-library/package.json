@@ -1,7 +1,7 @@
 {
   "name": "ms-user-library",
   "version": "1.0.0",
-  "description": "Favoritos y wishlist de los usuarios de GameTracker",
+  "description": "Favoritos de los usuarios de GameTracker",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

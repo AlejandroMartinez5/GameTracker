@@ -71,17 +71,6 @@ const publishFavoriteAdded = async ({ authId, igdbId }) => {
   });
 };
 
-const publishWishlistAdded = async ({ authId, igdbId }) => {
-  return safePublishNotificationEvent({
-    recipientAuthId: authId,
-    type: "library.wishlist_added",
-    title: "Agregado a tu wishlist",
-    body: "Se agrego un juego a tu wishlist.",
-    metadata: { igdbId }
-  });
-};
-
 module.exports = {
-  publishFavoriteAdded,
-  publishWishlistAdded
+  publishFavoriteAdded
 };

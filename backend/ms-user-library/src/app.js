@@ -4,7 +4,6 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 
 const favoritesRoutes = require("./routes/favorites.routes");
-const wishlistRoutes = require("./routes/wishlist.routes");
 
 const app = express();
 
@@ -20,6 +19,5 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/api/favorites", favoritesRoutes);
-app.use("/api/wishlist", wishlistRoutes);
 
 module.exports = app;

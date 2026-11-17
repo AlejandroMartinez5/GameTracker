@@ -17,23 +17,11 @@ const createTables = async () => {
       CHECK (igdb_id > 0)
     );
 
-    CREATE TABLE IF NOT EXISTS wishlist (
-      id SERIAL PRIMARY KEY,
-      auth_id VARCHAR(255) NOT NULL,
-      igdb_id INTEGER NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE (auth_id, igdb_id),
-      CHECK (igdb_id > 0)
-    );
-
     CREATE INDEX IF NOT EXISTS idx_favorites_auth_id_created_at
       ON favorites (auth_id, created_at DESC);
-
-    CREATE INDEX IF NOT EXISTS idx_wishlist_auth_id_created_at
-      ON wishlist (auth_id, created_at DESC);
   `);
 
-  console.log("Tablas favorites y wishlist verificadas/creadas");
+  console.log("Tabla favorites verificada/creada");
 };
 
 const testConnection = async (retries = 10, delay = 5000) => {
