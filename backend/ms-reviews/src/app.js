@@ -5,6 +5,7 @@ const morgan = require("morgan");
 
 const reviewsRoutes = require("./routes/reviews.routes");
 const commentsRoutes = require("./routes/comments.routes");
+const leaderboardsRoutes = require("./routes/leaderboards.routes");
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.get("/health", async (_req, res) => {
 
 app.use("/api/reviews", reviewsRoutes);
 app.use("/api/comments", commentsRoutes);
+app.use("/api/leaderboards", leaderboardsRoutes);
 
 app.use((_req, res) => res.status(404).json({ message: "Ruta no encontrada" }));
 
