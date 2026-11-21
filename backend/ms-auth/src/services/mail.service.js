@@ -35,4 +35,14 @@ async function sendVerificationCode(email, code) {
   });
 }
 
-module.exports = { sendVerificationCode };
+async function sendPasswordResetCode(email, code) {
+  await getTransporter().sendMail({
+    from: { name: "GameTracker", address: process.env.SMTP_USER },
+    to: email,
+    subject: "Recupera tu contraseña en GameTracker",
+    text: `Tu código para recuperar la contraseña de GameTracker es: ${code}\n\nExpira en 15 minutos. Si no solicitaste este cambio, ignora este mensaje.`,
+    html: `<h1>GameTracker</h1><p>Usa este código para recuperar tu contraseña:</p><p style="font-size:32px;letter-spacing:6px"><strong>${code}</strong></p><p>Expira en 15 minutos. Si no solicitaste este cambio, ignora este mensaje.</p>`
+  });
+}
+
+module.exports = { sendVerificationCode, sendPasswordResetCode };

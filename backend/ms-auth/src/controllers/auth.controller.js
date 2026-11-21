@@ -13,6 +13,22 @@ const register = async (req, res) => res.status(201).json(await service.register
 
 const login = async (req, res) => res.json(await service.login(req.body));
 
+const forgotPassword = async (req, res) => res.json(
+  await service.forgotPassword(req.body?.email)
+);
+
+const resetPassword = async (req, res) => res.json(
+  await service.resetPassword(req.body)
+);
+
+const changePassword = async (req, res) => res.json(
+  await service.changePassword(req.user.sub, req.body)
+);
+
+const updateUsername = async (req, res) => res.json({
+  user: await service.updateUsername(req.user.sub, req.body?.username)
+});
+
 const me = async (req, res) => res.json({ user: await service.getCurrentUser(req.user.sub) });
 
 
@@ -29,6 +45,7 @@ const verifyEmail = async (req, res) => {
 const updateProfile = async (req, res) => res.json({
   user: await service.updateProfile(req.user.sub, {
     name: req.body?.name,
+    username: req.body?.username,
     image: imageData(req.file)
   })
 });
@@ -49,13 +66,66 @@ const getProfileImage = async (req, res) => {
   return res.send(image.data);
 };
 
+const unbanUser = async (req, res) => res.json({
+  data: await service.unbanUser(req.params.authId, req.user.sub)
+});
+
+const getAdminStats = async (req, res) => res.json({
+  data: await service.getAdminStats(req.get('authorization')?.split(' ')[1])
+});
+
+const searchUsers = async (req, res) => res.json({
+  data: await service.searchUsers(req.query.q, { limit: req.query.limit })
+});
+
+const searchAdminUsers = async (req, res) => res.json({
+  data: await service.searchUsers(req.query.q, {
+    admin: true,
+    limit: req.query.limit
+  })
+});
+
+const getPublicProfileByUsername = async (req, res) => res.json({
+  data: await service.getPublicProfileByUsername(
+    req.params.username,
+    req.get('authorization')?.split(' ')[1]
+  )
+});
+
+const getPublicProfile = async (req, res) => res.json({
+  data: await service.getPublicProfile(
+    req.params.authId,
+    req.get('authorization')?.split(' ')[1]
+  )
+});
+
+const getAdminUser = async (req, res) => res.json({
+  data: await service.getAdminUser(req.params.authId)
+});
+
+const getAccountStatus = async (req, res) => res.json({
+  data: await service.getAccountStatus(req.params.authId)
+});
+
 module.exports = {
   register,
   login,
+  forgotPassword,
+  resetPassword,
+  changePassword,
+  updateUsername,
   me,
   resendVerification,
   verifyEmail,
   updateProfile,
   removeProfileImage,
-  getProfileImage
+  getProfileImage,
+  unbanUser,
+  getAdminStats,
+  searchUsers,
+  searchAdminUsers,
+  getPublicProfileByUsername,
+  getPublicProfile,
+  getAdminUser,
+  getAccountStatus
 };
