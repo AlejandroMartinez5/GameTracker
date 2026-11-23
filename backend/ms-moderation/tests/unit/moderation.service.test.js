@@ -1,15 +1,15 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 
-const moderationRepository = require("../../src/repositories/moderation.repository");
-const users = require("../../src/clients/users.client");
-const auth = require("../../src/clients/auth.client");
-const reviews = require("../../src/clients/reviews.client");
-const service = require("../../src/services/moderation.service");
+const path = require("node:path");
+const { loadWithMocks } = require("../helpers");
+
+const targetPath = path.join(__dirname, "../../src/services/moderation.service.js");
 
 const pendingReport = {
   id: 10,
   status: "PENDING",
+  reporter_auth_id: "reporter-auth",
   target_type: "USER",
   target_id: "target-auth",
   reason: "SPAM"
@@ -54,20 +54,22 @@ const buildService = (t, overrides = {}) => {
     ...overrides.reviewsClient
   };
 
-  for (const [name, implementation] of Object.entries(repository)) {
-    t.mock.method(moderationRepository, name, implementation);
-  }
-  for (const [name, implementation] of Object.entries(usersClient)) {
-    t.mock.method(users, name, implementation);
-  }
-  for (const [name, implementation] of Object.entries(authClient)) {
-    t.mock.method(auth, name, implementation);
-  }
-  for (const [name, implementation] of Object.entries(reviewsClient)) {
-    t.mock.method(reviews, name, implementation);
+  for (const dependency of [repository, usersClient, authClient, reviewsClient]) {
+    for (const name of Object.keys(dependency)) {
+      if (!dependency[name].mock) t.mock.method(dependency, name);
+    }
   }
 
-  return { service, repository: moderationRepository, usersClient: users, authClient: auth, reviewsClient: reviews };
+  const safePublishNotification = t.mock.fn(async () => {});
+  const service = loadWithMocks(targetPath, {
+    "../repositories/moderation.repository": repository,
+    "../clients/users.client": usersClient,
+    "../clients/auth.client": authClient,
+    "../clients/reviews.client": reviewsClient,
+    "../utils/notification-events.util": { safePublishNotification }
+  });
+
+  return { service, repository, usersClient, authClient, reviewsClient, safePublishNotification };
 };
 
 describe("createReport", () => {
@@ -288,5 +290,85 @@ describe("getAdminReportById", () => {
       await assert.rejects(() => service.getAdminReportById(id), { status: 400 });
     }
     assert.equal(repository.findReportById.mock.callCount(), 0);
+  });
+});
+
+describe("notificaciones de reportes", () => {
+  const admin = { authId: "admin-1" };
+  const reporter = { authId: pendingReport.reporter_auth_id };
+  const reportId = pendingReport.id;
+  const reportInput = { targetType: "USER", targetId: pendingReport.target_id, reason: "SPAM" };
+
+  it("confirma al denunciante la creación después de guardar el reporte", async (t) => {
+    const { service, safePublishNotification } = buildService(t, {
+      repository: {
+        createReport: async () => {
+          assert.equal(safePublishNotification.mock.callCount(), 0);
+          return pendingReport;
+        }
+      }
+    });
+
+    assert.equal(await service.createReport(reportInput, reporter, "token"), pendingReport);
+    assert.equal(safePublishNotification.mock.callCount(), 1);
+    const [notification] = safePublishNotification.mock.calls[0].arguments;
+    assert.equal(notification.recipientAuthId, reporter.authId);
+    assert.equal(notification.actorAuthId, null);
+    assert.equal(notification.type, "report.created");
+    assert.deepEqual(notification.metadata, {
+      reportId, targetType: "USER", targetId: pendingReport.target_id
+    });
+  });
+
+  for (const [actionType, type] of [
+    ["DISMISS_REPORT", "report.dismissed"],
+    ["BAN_USER", "report.action_taken"]
+  ]) {
+    it("notifica " + type + " después de registrar la resolución", async (t) => {
+      const result = { id: reportId };
+      const { service, safePublishNotification } = buildService(t, {
+        repository: {
+          completePendingReportWithAction: async () => {
+            assert.equal(safePublishNotification.mock.callCount(), 0);
+            return result;
+          }
+        }
+      });
+
+      assert.equal(await service.executeAction({ reportId, actionType }, admin, "token"), result);
+      assert.equal(safePublishNotification.mock.callCount(), 1);
+      const [notification] = safePublishNotification.mock.calls[0].arguments;
+      assert.equal(notification.recipientAuthId, reporter.authId);
+      assert.equal(notification.actorAuthId, admin.authId);
+      assert.equal(notification.type, type);
+      assert.deepEqual(notification.metadata, {
+        reportId,
+        targetType: "USER",
+        targetId: pendingReport.target_id,
+        ...(actionType === "BAN_USER" ? { actionType } : {})
+      });
+    });
+
+    it("omite " + type + " si no se guarda la resolución", async (t) => {
+      const failure = new Error("No se pudo guardar");
+      const { service, safePublishNotification } = buildService(t, {
+        repository: { completePendingReportWithAction: async () => { throw failure; } }
+      });
+
+      await assert.rejects(service.executeAction({ reportId, actionType }, admin, "token"),
+        (error) => error === failure);
+      assert.equal(safePublishNotification.mock.callCount(), 0);
+    });
+  }
+
+  it("omite la confirmación si el reporte está duplicado", async (t) => {
+    const { service, safePublishNotification } = buildService(t, {
+      repository: {
+        createReport: async () => { throw Object.assign(new Error("Duplicado"), { code: "23505" }); }
+      }
+    });
+
+    await assert.rejects(service.createReport(reportInput, reporter, "token"), { status: 409 });
+    assert.equal(safePublishNotification.mock.callCount(), 0);
   });
 });

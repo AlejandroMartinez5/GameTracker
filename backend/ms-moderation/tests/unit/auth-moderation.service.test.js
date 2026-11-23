@@ -7,11 +7,13 @@ const { AUTH_ID, mockRes, loadWithMocks } = require("../helpers");
 const targetPath = path.join(__dirname, "../../../ms-auth/src/services/moderation.service.js");
 
 describe("ms-auth moderation.service", () => {
-  it("ms-auth protege ADMIN y persiste suspensión con auditoría", async () => {
+  it("ms-auth protege ADMIN y persiste suspensión con auditoría", async (t) => {
+    const publishModerationNotification = t.mock.fn();
     const updates = [];
     let target = { _id: AUTH_ID, role: "USER" };
     const service = loadWithMocks(targetPath, {
       mongoose: { isObjectIdOrHexString: () => true },
+      "../utils/user-events.util": { publishModerationNotification },
       "../models/user.model": {
         findById: async () => target,
         findByIdAndUpdate: async (authId, update) => {
@@ -33,11 +35,19 @@ describe("ms-auth moderation.service", () => {
     target = { _id: AUTH_ID, role: "ADMIN" };
     await assert.rejects(() => service.moderate(req, res), { status: 403 });
     assert.equal(updates.length, 1);
+    assert.equal(publishModerationNotification.mock.callCount(), 1);
+    const [notification] = publishModerationNotification.mock.calls[0].arguments;
+    assert.equal(notification.recipientAuthId, AUTH_ID);
+    assert.equal(notification.actorAuthId, "admin");
+    assert.equal(notification.type, "account.suspended");
+    assert.equal(notification.metadata.reason, "spam");
   });
 
-  it("ms-auth rechaza suspensión sin fecha futura válida", async () => {
+  it("ms-auth rechaza suspensión sin fecha futura válida", async (t) => {
+    const publishModerationNotification = t.mock.fn();
     const service = loadWithMocks(targetPath, {
       mongoose: { isObjectIdOrHexString: () => true },
+      "../utils/user-events.util": { publishModerationNotification },
       "../models/user.model": { findById: async () => ({ _id: AUTH_ID, role: "USER" }) }
     });
     const req = {
@@ -47,5 +57,6 @@ describe("ms-auth moderation.service", () => {
     };
 
     await assert.rejects(() => service.moderate(req, mockRes()), { status: 400 });
+    assert.equal(publishModerationNotification.mock.callCount(), 0);
   });
 });
