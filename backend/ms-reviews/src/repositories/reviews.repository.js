@@ -280,9 +280,12 @@ const likeReview = async ({ reviewId, authId }) => {
 
 const unlikeReview = async ({ reviewId, authId }) => {
   const query = `
-    DELETE FROM review_likes
-    WHERE review_id = $1 AND auth_id = $2
-    RETURNING *
+    DELETE FROM review_likes AS likes
+    USING reviews AS review
+    WHERE likes.review_id = $1
+      AND likes.auth_id = $2
+      AND review.id = likes.review_id
+    RETURNING likes.*, review.auth_id AS owner_auth_id
   `;
 
   const result = await pool.query(query, [reviewId, authId]);

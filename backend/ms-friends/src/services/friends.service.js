@@ -2,7 +2,9 @@ const friendsRepository = require("../repositories/friends.repository");
 const {
   publishFriendRequestAccepted,
   publishFriendRequestReceived,
-  publishFriendRequestRejected
+  publishFriendRequestRejected,
+  publishFriendAccepted,
+  publishFriendRemoved
 } = require("../utils/notification-events.util");
 const {
   getPaginationParams,
@@ -113,6 +115,7 @@ const acceptFriendRequest = async (authId, requestId) => {
   });
 
   await publishFriendRequestAccepted(updatedRequest);
+  await publishFriendAccepted(updatedRequest);
 
   return updatedRequest;
 };
@@ -177,6 +180,8 @@ const removeFriend = async (authId, friendAuthId) => {
   if (!removed) {
     throwError("Amistad no encontrada", 404);
   }
+
+  await publishFriendRemoved(removed);
 
   return removed;
 };

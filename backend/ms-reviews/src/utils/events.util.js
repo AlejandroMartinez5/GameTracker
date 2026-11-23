@@ -81,12 +81,29 @@ const publishReviewDeleted = ({ review, actorAuthId }) => {
   });
 };
 
+const publishReviewDeletedForAchievements = ({ review }) => {
+  return safePublish("ReviewDeletedForAchievements", {
+    authorAuthId: review.auth_id,
+    reviewId: review.id,
+    igdbId: review.igdb_id
+  });
+};
+
 const publishReviewLiked = ({ review, actorAuthId }) => {
   return safePublish("ReviewLiked", {
     actorAuthId,
     recipientAuthId: review.auth_id,
     reviewId: review.id,
     igdbId: review.igdb_id
+  });
+};
+
+const publishReviewUnliked = ({ ownerAuthId, actorAuthId, reviewId, igdbId }) => {
+  return safePublish("ReviewUnliked", {
+    ownerAuthId,
+    actorAuthId,
+    reviewId,
+    igdbId
   });
 };
 
@@ -100,12 +117,29 @@ const publishReviewCommented = ({ review, comment }) => {
   });
 };
 
+const publishCommentCreated = ({ comment }) => {
+  return safePublish("CommentCreated", {
+    authorAuthId: comment.auth_id,
+    commentId: comment.id,
+    reviewId: comment.review_id
+  });
+};
+
 const publishCommentLiked = ({ comment, actorAuthId }) => {
   return safePublish("CommentLiked", {
     actorAuthId,
     recipientAuthId: comment.auth_id,
     commentId: comment.id,
     reviewId: comment.review_id
+  });
+};
+
+const publishCommentUnliked = ({ ownerAuthId, actorAuthId, commentId, reviewId }) => {
+  return safePublish("CommentUnliked", {
+    ownerAuthId,
+    actorAuthId,
+    commentId,
+    reviewId
   });
 };
 
@@ -120,6 +154,14 @@ const publishCommentDeleted = ({ comment, actorAuthId }) => {
       commentId: comment.id,
       reviewId: comment.review_id
     }
+  });
+};
+
+const publishCommentDeletedForAchievements = ({ comment }) => {
+  return safePublish("CommentDeletedForAchievements", {
+    authorAuthId: comment.auth_id,
+    commentId: comment.id,
+    reviewId: comment.review_id
   });
 };
 
@@ -154,10 +196,15 @@ const publishCommentImageRemoved = ({ comment, actorAuthId }) => {
 module.exports = {
   publishReviewCreated,
   publishReviewDeleted,
+  publishReviewDeletedForAchievements,
   publishReviewLiked,
+  publishReviewUnliked,
   publishReviewCommented,
+  publishCommentCreated,
   publishCommentLiked,
+  publishCommentUnliked,
   publishCommentDeleted,
+  publishCommentDeletedForAchievements,
   publishReviewImageRemoved,
   publishCommentImageRemoved
 };

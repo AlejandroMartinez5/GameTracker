@@ -81,6 +81,7 @@ const createComment = async (reviewId, { content, image = null }, user) => {
   });
 
   events.publishReviewCommented({ review, comment });
+  events.publishCommentCreated({ comment });
 
   return comment;
 };
@@ -136,6 +137,7 @@ const deleteComment = async (commentId, user) => {
 
   await commentsRepository.deleteComment(comment.id);
   events.publishCommentDeleted({ comment, actorAuthId: user.authId });
+  events.publishCommentDeletedForAchievements({ comment });
 
   return { message: "Comentario eliminado correctamente" };
 };
@@ -214,6 +216,15 @@ const unlikeComment = async (commentId, user) => {
 
   if (!removedLike) {
     throw createError("No habías dado like a este comentario", 404);
+  }
+
+  if (removedLike.owner_auth_id) {
+    events.publishCommentUnliked({
+      ownerAuthId: removedLike.owner_auth_id,
+      actorAuthId: user.authId,
+      commentId: removedLike.comment_id,
+      reviewId: removedLike.review_id
+    });
   }
 
   return { message: "Like eliminado correctamente" };

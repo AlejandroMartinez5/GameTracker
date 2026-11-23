@@ -76,6 +76,28 @@ const safePublishNotificationEvent = async (payload) => {
   }
 };
 
+const publishFriendDomainEvent = async (type, request) => {
+  try {
+    const { channel: brokerChannel } = await connectBroker();
+    const event = {
+      eventId: crypto.randomUUID(),
+      type,
+      occurredAt: new Date().toISOString(),
+      payload: {
+        requesterAuthId: request.requester_auth_id,
+        receiverAuthId: request.receiver_auth_id,
+        requestId: request.id
+      }
+    };
+
+    if (!brokerChannel.publish(EXCHANGE_NAME, "", Buffer.from(JSON.stringify(event)), { persistent: true })) {
+      throw new Error("No se pudo publicar el evento de amistad");
+    }
+  } catch (error) {
+    console.warn("[ms-friends] No se pudo publicar el evento de amistad:", error.message);
+  }
+};
+
 const publishFriendRequestReceived = async (request) => {
   return safePublishNotificationEvent({
     recipientAuthId: request.receiver_auth_id,
@@ -121,9 +143,14 @@ const publishFriendRequestRejected = async (request) => {
   });
 };
 
+const publishFriendAccepted = (request) => publishFriendDomainEvent("FriendAccepted", request);
+const publishFriendRemoved = (request) => publishFriendDomainEvent("FriendRemoved", request);
+
 module.exports = {
   publishFriendRequestReceived,
   publishFriendRequestAccepted,
   publishFriendRequestRejected,
+  publishFriendAccepted,
+  publishFriendRemoved,
   FRIEND_NOTIFICATION_TYPES
 };

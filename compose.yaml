@@ -81,6 +81,23 @@ services:
       timeout: 5s
       retries: 20
 
+  achievements-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gametracker
+      POSTGRES_PASSWORD: ${ACHIEVEMENTS_DB_PASSWORD:-gametracker_dev}
+      POSTGRES_DB: gametracker_achievements
+    ports:
+      - "127.0.0.1:5438:5432"
+    volumes:
+      - achievements_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gametracker -d gametracker_achievements"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   rabbitmq:
     image: rabbitmq:4-alpine
     restart: unless-stopped
@@ -264,6 +281,38 @@ services:
       retries: 5
       start_period: 15s
 
+  ms-achievements:
+    build:
+      context: ./backend/ms-achievements
+    restart: unless-stopped
+    init: true
+    environment:
+      PORT: "3011"
+      DATABASE_URL: postgresql://gametracker:${ACHIEVEMENTS_DB_PASSWORD:-gametracker_dev}@achievements-db:5432/gametracker_achievements
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-gametracker}:${RABBITMQ_PASSWORD:-gametracker_dev}@rabbitmq:5672
+      ACHIEVEMENTS_TENURE_CHECK_INTERVAL_MS: "3600000"
+    ports:
+      - "127.0.0.1:3011:3011"
+    depends_on:
+      achievements-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - type: bind
+        source: ./backend/ms-auth/src/keys/public.pem
+        target: /app/keys/public.pem
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3011/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
   ms-reviews:
     build:
       context: ./backend/ms-reviews
@@ -363,3 +412,4 @@ volumes:
   notifications_data:
   rabbitmq_data:
   reviews_data:
+  achievements_data:

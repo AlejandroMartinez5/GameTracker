@@ -215,9 +215,12 @@ const likeComment = async ({ commentId, authId }) => {
 
 const unlikeComment = async ({ commentId, authId }) => {
   const query = `
-    DELETE FROM comment_likes
-    WHERE comment_id = $1 AND auth_id = $2
-    RETURNING *
+    DELETE FROM comment_likes AS likes
+    USING comments AS comment
+    WHERE likes.comment_id = $1
+      AND likes.auth_id = $2
+      AND comment.id = likes.comment_id
+    RETURNING likes.*, comment.auth_id AS owner_auth_id
   `;
 
   const result = await pool.query(query, [commentId, authId]);

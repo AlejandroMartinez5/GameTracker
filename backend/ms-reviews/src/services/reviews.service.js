@@ -241,6 +241,7 @@ const deleteReview = async (reviewId, user) => {
   await reviewsRepository.deleteReview(review.id);
 
   events.publishReviewDeleted({ review, actorAuthId: user.authId });
+  events.publishReviewDeletedForAchievements({ review });
 
   return { message: "Reseña eliminada correctamente" };
 };
@@ -314,6 +315,15 @@ const unlikeReview = async (reviewId, user) => {
 
   if (!removedLike) {
     throw createError("No habías dado like a esta reseña", 404);
+  }
+
+  if (removedLike.owner_auth_id) {
+    events.publishReviewUnliked({
+      ownerAuthId: removedLike.owner_auth_id,
+      actorAuthId: user.authId,
+      reviewId: removedLike.review_id,
+      igdbId: removedLike.igdb_id
+    });
   }
 
   return { message: "Like eliminado correctamente" };
