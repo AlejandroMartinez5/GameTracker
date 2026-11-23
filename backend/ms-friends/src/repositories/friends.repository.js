@@ -38,16 +38,18 @@ const findById = async (requestId) => {
   return result.rows[0] || null;
 };
 
-const updateStatus = async ({ requestId, status }) => {
+const updateStatus = async ({ requestId, status, receiverAuthId }) => {
   const query = `
     UPDATE friend_requests
     SET status = $1,
         updated_at = CURRENT_TIMESTAMP
-    WHERE id = $2
+     WHERE id = $2
+       AND status = 'PENDING'
+       AND receiver_auth_id = $3
     RETURNING *
   `;
 
-  const result = await pool.query(query, [status, requestId]);
+  const result = await pool.query(query, [status, requestId, receiverAuthId]);
   return result.rows[0] || null;
 };
 

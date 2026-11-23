@@ -16,6 +16,9 @@ const BCRYPT_MAX_BYTES = 72;
 const USERNAME_MIN_LENGTH = 3;
 const USERNAME_MAX_LENGTH = 25;
 const DUPLICATE_KEY_ERROR = 11000;
+const PASSWORD_RESET_GENERIC_RESPONSE = {
+  message: "Si la cuenta existe, recibirás un correo para restablecer la contraseña"
+};
 
 function createError(message, statusCode) {
   const error = new Error(message);
@@ -343,7 +346,7 @@ async function forgotPassword(email) {
   const user = await userRepository.findByEmail(email);
 
   if (!user) {
-    return { passwordResetEmailSent: false };
+    return PASSWORD_RESET_GENERIC_RESPONSE;
   }
 
   const code = createNumericCode();
@@ -356,10 +359,10 @@ async function forgotPassword(email) {
     await mailService.sendPasswordResetCode(user.email, code);
   } catch (error) {
     await userRepository.clearPasswordResetToken(user._id);
-    throw createError("No se pudo enviar el correo de recuperación", 503);
+    console.error("No se pudo enviar el correo de recuperación:", error.message);
   }
 
-  return { passwordResetEmailSent: true, expiresIn: 900 };
+  return PASSWORD_RESET_GENERIC_RESPONSE;
 }
 
 async function resetPassword({ code, token, password } = {}) {

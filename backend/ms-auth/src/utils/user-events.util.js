@@ -2,6 +2,7 @@ const crypto = require("node:crypto");
 const amqp = require("amqplib");
 
 const EXCHANGE_NAME = "user_events";
+const NOTIFICATION_EXCHANGE_NAME = "notification_events";
 
 let connection = null;
 let channel = null;
@@ -23,11 +24,12 @@ const connectBroker = async () => {
   connection.on("error", resetBroker);
   channel = await connection.createChannel();
   await channel.assertExchange(EXCHANGE_NAME, "fanout", { durable: true });
+  await channel.assertExchange(NOTIFICATION_EXCHANGE_NAME, "fanout", { durable: true });
 
   return channel;
 };
 
-const safePublish = async (type, payload) => {
+const safePublish = async (type, payload, exchangeName = EXCHANGE_NAME) => {
   try {
     const brokerChannel = await connectBroker();
     const event = {
@@ -38,7 +40,7 @@ const safePublish = async (type, payload) => {
     };
 
     brokerChannel.publish(
-      EXCHANGE_NAME,
+      exchangeName,
       "",
       Buffer.from(JSON.stringify(event)),
       { persistent: true }
@@ -87,7 +89,7 @@ const publishModerationNotification = ({ recipientAuthId, actorAuthId, type, tit
     title,
     body,
     metadata
-  });
+  }, NOTIFICATION_EXCHANGE_NAME);
 };
 
 module.exports = {

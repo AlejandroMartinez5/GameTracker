@@ -191,6 +191,7 @@ services:
     init: true
     environment:
       PORT: "3006"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       DATABASE_URL: postgresql://gametracker:${FRIENDS_DB_PASSWORD:-gametracker_dev}@friends-db:5432/gametracker_friends
       JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-gametracker}:${RABBITMQ_PASSWORD:-gametracker_dev}@rabbitmq:5672
@@ -255,6 +256,7 @@ services:
     init: true
     environment:
       PORT: "3008"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       DATABASE_URL: postgresql://gametracker:${NOTIFICATIONS_DB_PASSWORD:-gametracker_dev}@notifications-db:5432/gametracker_notifications
       JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-gametracker}:${RABBITMQ_PASSWORD:-gametracker_dev}@rabbitmq:5672
@@ -288,6 +290,7 @@ services:
     init: true
     environment:
       PORT: "3011"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       DATABASE_URL: postgresql://gametracker:${ACHIEVEMENTS_DB_PASSWORD:-gametracker_dev}@achievements-db:5432/gametracker_achievements
       JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-gametracker}:${RABBITMQ_PASSWORD:-gametracker_dev}@rabbitmq:5672
@@ -320,6 +323,7 @@ services:
     init: true
     environment:
       PORT: "3005"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       DATABASE_URL: postgresql://gametracker:${REVIEWS_DB_PASSWORD:-gametracker_dev}@reviews-db:5432/gametracker_reviews
       JWT_PUBLIC_KEY_PATH: /app/src/keys/public.pem
       GAMES_SERVICE_URL: http://ms-games:3009/api/games

@@ -111,8 +111,13 @@ const acceptFriendRequest = async (authId, requestId) => {
 
   const updatedRequest = await friendsRepository.updateStatus({
     requestId: parsedRequestId,
-    status: "ACCEPTED"
+    status: "ACCEPTED",
+    receiverAuthId: receiver
   });
+
+  if (!updatedRequest) {
+    throwError("La solicitud ya no está pendiente", 409);
+  }
 
   await publishFriendRequestAccepted(updatedRequest);
   await publishFriendAccepted(updatedRequest);
@@ -139,8 +144,13 @@ const rejectFriendRequest = async (authId, requestId) => {
 
   const updatedRequest = await friendsRepository.updateStatus({
     requestId: parsedRequestId,
-    status: "REJECTED"
+    status: "REJECTED",
+    receiverAuthId: receiver
   });
+
+  if (!updatedRequest) {
+    throwError("La solicitud ya no está pendiente", 409);
+  }
 
   await publishFriendRequestRejected(updatedRequest);
 

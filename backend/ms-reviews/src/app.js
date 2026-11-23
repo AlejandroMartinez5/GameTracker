@@ -8,9 +8,17 @@ const commentsRoutes = require("./routes/comments.routes");
 const leaderboardsRoutes = require("./routes/leaderboards.routes");
 
 const app = express();
+const allowedOrigins = new Set(
+  (process.env.CORS_ORIGINS || "http://localhost:3000,http://127.0.0.1:3000")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+);
 
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => callback(null, !origin || allowedOrigins.has(origin))
+}));
 
 if (process.env.NODE_ENV !== "test") {
   app.use(morgan("dev"));
