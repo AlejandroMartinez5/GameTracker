@@ -65,6 +65,23 @@ const getCommentById = async (req, res) => {
   }
 };
 
+const updateComment = async (req, res) => {
+  try {
+    const comment = await commentsService.updateComment(
+      req.params.commentId,
+      req.body || {},
+      req.user
+    );
+
+    return res.status(200).json({
+      message: "Comentario actualizado correctamente",
+      data: comment
+    });
+  } catch (error) {
+    return handleError(res, error, "Error interno del servidor");
+  }
+};
+
 const deleteComment = async (req, res) => {
   try {
     const result = await commentsService.deleteComment(
@@ -176,6 +193,7 @@ module.exports = {
   createComment,
   getCommentsByReview,
   getCommentById,
+  updateComment,
   deleteComment,
   removeCommentImage,
   addCommentImage,

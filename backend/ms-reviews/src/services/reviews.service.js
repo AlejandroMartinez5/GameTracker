@@ -192,6 +192,10 @@ const getUserReviewsSummary = async (authId) => {
   return { authId, reviewsCount, totalLikesReceived };
 };
 
+const getAdminStats = async (query = {}) => {
+  return reviewsRepository.getAdminStats(query);
+};
+
 const updateReview = async (
   reviewId,
   { rating, title, content, image = null },
@@ -324,6 +328,7 @@ module.exports = {
   getReviewsByUser,
   getReviewById,
   getUserReviewsSummary,
+  getAdminStats,
   updateReview,
   deleteReview,
   removeReviewImage,

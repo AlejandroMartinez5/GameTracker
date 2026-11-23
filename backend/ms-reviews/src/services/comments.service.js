@@ -7,6 +7,8 @@ const {
 } = require("../utils/pagination.util");
 
 const MAX_INTEGER = 2147483647;
+const COMMENT_EDIT_LIMIT_MINUTES =
+  Number(process.env.COMMENT_EDIT_LIMIT_MINUTES) || 30;
 
 const createError = (message, status) => {
   const error = new Error(message);
@@ -30,6 +32,17 @@ const validateContent = (content) => {
   }
 
   return content.trim();
+};
+
+const canEditComment = (comment, user) => {
+  if (comment.auth_id !== user.authId) {
+    return false;
+  }
+
+  const createdAt = new Date(comment.created_at);
+  const elapsedMinutes = (Date.now() - createdAt.getTime()) / (1000 * 60);
+
+  return elapsedMinutes <= COMMENT_EDIT_LIMIT_MINUTES;
 };
 
 const getExistingReview = async (reviewId) => {
@@ -95,6 +108,23 @@ const getCommentsByReview = async (reviewId, paginationQuery, user = null) => {
 
 const getCommentById = async (commentId) => {
   return getExistingComment(commentId);
+};
+
+const updateComment = async (commentId, { content }, user) => {
+  const comment = await getExistingComment(commentId);
+  const text = validateContent(content);
+
+  if (!canEditComment(comment, user)) {
+    throw createError(
+      `Solo puedes editar tu comentario durante los primeros ${COMMENT_EDIT_LIMIT_MINUTES} minutos`,
+      403
+    );
+  }
+
+  return commentsRepository.updateComment({
+    commentId: comment.id,
+    content: text
+  });
 };
 
 const deleteComment = async (commentId, user) => {
@@ -194,6 +224,7 @@ module.exports = {
   createComment,
   getCommentsByReview,
   getCommentById,
+  updateComment,
   deleteComment,
   removeCommentImage,
   addCommentImage,

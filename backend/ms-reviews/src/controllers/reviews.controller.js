@@ -86,6 +86,19 @@ const getUserReviewsSummary = async (req, res) => {
   }
 };
 
+const getAdminStats = async (req, res) => {
+  try {
+    const result = await reviewsService.getAdminStats(req.query);
+
+    return res.status(200).json({
+      message: "Estadisticas de resenas obtenidas correctamente",
+      data: result
+    });
+  } catch (error) {
+    return handleError(res, error, "Error al obtener estadisticas de resenas");
+  }
+};
+
 const getReviewById = async (req, res) => {
   try {
     const review = await reviewsService.getReviewById(req.params.reviewId);
@@ -219,6 +232,7 @@ module.exports = {
   getReviewsByGame,
   getReviewsByUser,
   getUserReviewsSummary,
+  getAdminStats,
   getReviewById,
   updateReview,
   deleteReview,

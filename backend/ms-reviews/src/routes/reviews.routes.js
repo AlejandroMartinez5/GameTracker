@@ -4,7 +4,8 @@ const commentsController = require("../controllers/comments.controller");
 const {
   authenticateToken,
   optionalAuthenticateToken,
-  requireVerifiedEmail
+  requireVerifiedEmail,
+  requireAdmin
 } = require("../middlewares/auth.middleware");
 const { uploadImage } = require("../middlewares/upload.middleware");
 
@@ -21,12 +22,14 @@ router.post(
 router.get("/game/:igdbId", optionalAuthenticateToken, reviewsController.getReviewsByGame);
 router.get("/user/:authId/summary", optionalAuthenticateToken, reviewsController.getUserReviewsSummary);
 router.get("/user/:authId", optionalAuthenticateToken, reviewsController.getReviewsByUser);
+router.get("/admin/stats", authenticateToken, requireAdmin, reviewsController.getAdminStats);
 
 router.get("/:reviewId/comments", optionalAuthenticateToken, commentsController.getCommentsByReview);
 router.post(
   "/:reviewId/comments",
   authenticateToken,
   requireVerifiedEmail,
+  uploadImage,
   commentsController.createComment
 );
 

@@ -17,6 +17,7 @@ router.post("/:commentId/image", authenticateToken, uploadImage, commentsControl
 router.get("/:commentId/image", commentsController.getCommentImage);
 
 router.get("/:commentId", optionalAuthenticateToken, commentsController.getCommentById);
+router.put("/:commentId", authenticateToken, commentsController.updateComment);
 router.delete("/:commentId", authenticateToken, commentsController.deleteComment);
 
 module.exports = router;

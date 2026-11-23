@@ -300,6 +300,109 @@ const countLikes = async (reviewId) => {
   return Number(result.rows[0].likes_count);
 };
 
+const getAdminStats = async ({ days = 30, limit = 5 } = {}) => {
+  const safeDays = Math.min(Math.max(Number(days) || 30, 1), 365);
+  const safeLimit = Math.min(Math.max(Number(limit) || 5, 1), 20);
+  const [totalsResult, reviewsPerDayResult, likesPerDayResult, topReviewsResult, topCommentsResult] = await Promise.all([
+    pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM reviews)::int AS total_reviews,
+        (SELECT COUNT(*) FROM comments)::int AS total_comments,
+        (SELECT COUNT(*) FROM review_likes)::int AS total_review_likes,
+        (SELECT COUNT(*) FROM comment_likes)::int AS total_comment_likes,
+        COALESCE(ROUND(AVG(rating)::numeric, 2), 0)::float AS average_rating
+      FROM reviews
+    `),
+    pool.query(`
+      WITH days AS (
+        SELECT generate_series(
+          CURRENT_DATE - (($1::int - 1) * INTERVAL '1 day'),
+          CURRENT_DATE,
+          INTERVAL '1 day'
+        )::date AS day
+      )
+      SELECT days.day, COALESCE(COUNT(reviews.id), 0)::int AS count
+      FROM days
+      LEFT JOIN reviews ON DATE(reviews.created_at) = days.day
+      GROUP BY days.day
+      ORDER BY days.day ASC
+    `, [safeDays]),
+    pool.query(`
+      WITH days AS (
+        SELECT generate_series(
+          CURRENT_DATE - (($1::int - 1) * INTERVAL '1 day'),
+          CURRENT_DATE,
+          INTERVAL '1 day'
+        )::date AS day
+      ), review_counts AS (
+        SELECT DATE(created_at) AS day, COUNT(*)::int AS count
+        FROM review_likes
+        WHERE created_at >= CURRENT_DATE - (($1::int - 1) * INTERVAL '1 day')
+        GROUP BY DATE(created_at)
+      ), comment_counts AS (
+        SELECT DATE(created_at) AS day, COUNT(*)::int AS count
+        FROM comment_likes
+        WHERE created_at >= CURRENT_DATE - (($1::int - 1) * INTERVAL '1 day')
+        GROUP BY DATE(created_at)
+      )
+      SELECT days.day,
+        COALESCE(review_counts.count, 0) AS review_likes,
+        COALESCE(comment_counts.count, 0) AS comment_likes,
+        COALESCE(review_counts.count, 0) + COALESCE(comment_counts.count, 0) AS total_likes
+      FROM days
+      LEFT JOIN review_counts ON review_counts.day = days.day
+      LEFT JOIN comment_counts ON comment_counts.day = days.day
+      ORDER BY days.day ASC
+    `, [safeDays]),
+    pool.query(`
+      SELECT r.id, r.auth_id, r.igdb_id, r.rating, r.title, r.content,
+        r.image_url, r.created_at, COUNT(rl.id)::int AS likes_count
+      FROM reviews r
+      LEFT JOIN review_likes rl ON rl.review_id = r.id
+      GROUP BY r.id
+      ORDER BY likes_count DESC, r.created_at DESC
+      LIMIT $1
+    `, [safeLimit]),
+    pool.query(`
+      SELECT c.id, c.review_id, c.auth_id, c.content, c.image_url,
+        c.created_at, COUNT(cl.id)::int AS likes_count
+      FROM comments c
+      LEFT JOIN comment_likes cl ON cl.comment_id = c.id
+      GROUP BY c.id
+      ORDER BY likes_count DESC, c.created_at DESC
+      LIMIT $1
+    `, [safeLimit])
+  ]);
+
+  const totals = totalsResult.rows[0];
+  const totalReviews = Number(totals.total_reviews);
+  const totalComments = Number(totals.total_comments);
+  const totalReviewLikes = Number(totals.total_review_likes);
+  const totalCommentLikes = Number(totals.total_comment_likes);
+
+  return {
+    totals: {
+      reviews: totalReviews,
+      comments: totalComments,
+      reviewLikes: totalReviewLikes,
+      commentLikes: totalCommentLikes,
+      likes: totalReviewLikes + totalCommentLikes,
+      averageRating: Number(totals.average_rating)
+    },
+    reviewsPerDay: reviewsPerDayResult.rows,
+    likesPerDay: likesPerDayResult.rows,
+    topLikedContent: {
+      reviews: topReviewsResult.rows,
+      comments: topCommentsResult.rows
+    },
+    ratios: {
+      reviewLikesPerReview: totalReviews > 0 ? Number((totalReviewLikes / totalReviews).toFixed(2)) : 0,
+      commentLikesPerComment: totalComments > 0 ? Number((totalCommentLikes / totalComments).toFixed(2)) : 0
+    },
+    period: { days: safeDays }
+  };
+};
+
 module.exports = {
   createReview,
   findById,
@@ -317,5 +420,6 @@ module.exports = {
   getReviewImage,
   likeReview,
   unlikeReview,
-  countLikes
+  countLikes,
+  getAdminStats
 };
