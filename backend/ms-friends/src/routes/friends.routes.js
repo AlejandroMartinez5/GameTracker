@@ -1,11 +1,12 @@
 ﻿const express = require("express");
 const friendsController = require("../controllers/friends.controller");
-const { authenticateToken } = require("../middlewares/auth.middleware");
+const { authenticateToken, requireAdmin } = require("../middlewares/auth.middleware");
 
 const router = express.Router();
 
 router.use(authenticateToken);
 
+router.get("/admin/stats", requireAdmin, friendsController.getAdminStats);
 router.get("/user/:authId/summary", friendsController.getFriendsSummary);
 router.get("/user/:authId", friendsController.getPublicFriends);
 

@@ -187,6 +187,19 @@ const getRelationshipStatus = async (req, res) => {
   }
 };
 
+const getAdminStats = async (_req, res) => {
+  try {
+    return res.status(200).json({
+      message: "Estadisticas de amistades obtenidas correctamente",
+      data: await friendsService.getAdminStats()
+    });
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      message: error.message || "Error interno del servidor"
+    });
+  }
+};
+
 module.exports = {
   sendFriendRequest,
   acceptFriendRequest,
@@ -198,5 +211,6 @@ module.exports = {
   getFriendsSummary,
   getIncomingRequests,
   getOutgoingRequests,
-  getRelationshipStatus
+  getRelationshipStatus,
+  getAdminStats
 };

@@ -266,6 +266,8 @@ const getRelationshipStatus = async (authId, otherAuthId) => {
   };
 };
 
+const getAdminStats = async () => friendsRepository.getAdminStats();
+
 module.exports = {
   sendFriendRequest,
   acceptFriendRequest,
@@ -277,5 +279,6 @@ module.exports = {
   getFriendsSummary,
   getIncomingRequests,
   getOutgoingRequests,
-  getRelationshipStatus
+  getRelationshipStatus,
+  getAdminStats
 };

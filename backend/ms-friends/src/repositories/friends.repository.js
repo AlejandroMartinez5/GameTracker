@@ -176,6 +176,36 @@ const findOutgoingRequests = async (authId, { limit, offset }) => {
   return result.rows;
 };
 
+const getAdminStats = async () => {
+  const result = await pool.query(`
+    WITH accepted_users AS (
+      SELECT requester_auth_id AS auth_id
+      FROM friend_requests
+      WHERE status = 'ACCEPTED'
+      UNION
+      SELECT receiver_auth_id AS auth_id
+      FROM friend_requests
+      WHERE status = 'ACCEPTED'
+    )
+    SELECT
+      (SELECT COUNT(*) FROM friend_requests)::int AS total_requests,
+      (SELECT COUNT(*) FROM friend_requests WHERE status = 'PENDING')::int AS pending_requests,
+      (SELECT COUNT(*) FROM friend_requests WHERE status = 'ACCEPTED')::int AS accepted_friendships,
+      (SELECT COUNT(*) FROM friend_requests WHERE status = 'REJECTED')::int AS rejected_requests,
+      (SELECT COUNT(*) FROM accepted_users)::int AS users_with_friendships
+  `);
+
+  const row = result.rows[0];
+
+  return {
+    totalRequests: row.total_requests,
+    pendingRequests: row.pending_requests,
+    acceptedFriendships: row.accepted_friendships,
+    rejectedRequests: row.rejected_requests,
+    usersWithFriendships: row.users_with_friendships
+  };
+};
+
 module.exports = {
   createRequest,
   findActiveBetweenUsers,
@@ -189,5 +219,6 @@ module.exports = {
   countIncomingRequests,
   findIncomingRequests,
   countOutgoingRequests,
-  findOutgoingRequests
+  findOutgoingRequests,
+  getAdminStats
 };
