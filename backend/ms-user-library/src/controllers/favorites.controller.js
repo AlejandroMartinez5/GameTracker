@@ -70,9 +70,23 @@ const removeFavorite = async (req, res) => {
   }
 };
 
+const getAdminStats = async (_req, res) => {
+  try {
+    return res.status(200).json({
+      message: "Estadisticas de favoritos obtenidas correctamente",
+      data: await favoritesService.getAdminStats()
+    });
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      message: error.message || "Error interno del servidor"
+    });
+  }
+};
+
 module.exports = {
   addFavorite,
   getFavorites,
   getFavoritesByUser,
-  removeFavorite
+  removeFavorite,
+  getAdminStats
 };

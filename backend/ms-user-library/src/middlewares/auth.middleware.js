@@ -36,5 +36,12 @@ const authenticateToken = (req, res, next) => {
 };
 
 module.exports = {
-  authenticateToken
+  authenticateToken,
+  requireAdmin: (req, res, next) => {
+    if (req.user?.role !== "ADMIN") {
+      return res.status(403).json({ message: "Se requiere rol de administrador" });
+    }
+
+    return next();
+  }
 };

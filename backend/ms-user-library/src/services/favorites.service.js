@@ -80,8 +80,11 @@ const removeFavorite = async (authId, igdbId) => {
   return removed;
 };
 
+const getAdminStats = async () => favoritesRepository.getAdminStats();
+
 module.exports = {
   addFavorite,
   getFavorites,
-  removeFavorite
+  removeFavorite,
+  getAdminStats
 };

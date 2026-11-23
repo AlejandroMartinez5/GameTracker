@@ -56,10 +56,33 @@ const remove = async (authId, igdbId) => {
   return result.rows[0] || null;
 };
 
+const getAdminStats = async () => {
+  const result = await pool.query(`
+    SELECT
+      COUNT(*)::int AS total_favorites,
+      COUNT(DISTINCT auth_id)::int AS users_with_favorites,
+      COUNT(DISTINCT igdb_id)::int AS games_in_favorites,
+      COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE)::int AS favorites_today,
+      COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE - INTERVAL '30 days')::int AS favorites_last_30_days
+    FROM favorites
+  `);
+
+  const row = result.rows[0];
+
+  return {
+    totalFavorites: row.total_favorites,
+    usersWithFavorites: row.users_with_favorites,
+    gamesInFavorites: row.games_in_favorites,
+    favoritesToday: row.favorites_today,
+    favoritesLast30Days: row.favorites_last_30_days
+  };
+};
+
 module.exports = {
   create,
   find,
   getByUser,
   countByUser,
-  remove
+  remove,
+  getAdminStats
 };
