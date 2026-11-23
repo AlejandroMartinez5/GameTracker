@@ -12,7 +12,9 @@ function cleanTerm(value) { return value.replace(/[";\r\n]/g, ' ').replace(/\s+/
 async function getGameById(value) {
   const igdbId = Number(value);
   const cached = await repository.findByIgdbId(igdbId);
-  if (cached) return toGameResponse(cached);
+  if (cached && (cached.developers?.length > 0 || cached.publishers?.length > 0)) {
+    return toGameResponse(cached);
+  }
   const game = await igdb.getGameById(igdbId);
   if (!game) throw Object.assign(new Error('Videojuego no encontrado'), { status: 404 });
   return toGameResponse(await repository.upsertGame(toGameDocument(game)));
@@ -44,4 +46,40 @@ async function getGamesByGenre(genre, requestedLimit) {
   return { genre, source: 'igdb', results: saved.map(toGameResponse) };
 }
 
-module.exports = { getGameById, searchGames, getPopularGames, getGamesByGenre };
+function dashboardGenres(value) {
+  const genres = Array.isArray(value)
+    ? value
+    : typeof value === 'string'
+      ? value.split(',')
+      : ['Action', 'Adventure', 'RPG', 'Strategy'];
+
+  const normalized = [...new Set(genres.map(genre => genre.trim()).filter(Boolean))];
+
+  if (!normalized.length || normalized.length > 10) {
+    throw Object.assign(new Error('genres debe contener entre 1 y 10 generos'), { status: 400 });
+  }
+
+  return normalized;
+}
+
+async function getDashboard(requestedLimit, requestedGenres) {
+  const limit = limitValue(requestedLimit);
+  const genres = dashboardGenres(requestedGenres);
+  const [popular, ...genreResults] = await Promise.all([
+    getPopularGames(limit),
+    ...genres.map(genre => getGamesByGenre(genre, limit))
+  ]);
+
+  return {
+    popular: popular.results,
+    byGenre: Object.fromEntries(genres.map((genre, index) => [genre, genreResults[index].results])),
+    genres,
+    limit
+  };
+}
+
+async function getAdminStats() {
+  return repository.getAdminStats();
+}
+
+module.exports = { getGameById, searchGames, getPopularGames, getGamesByGenre, getDashboard, getAdminStats };

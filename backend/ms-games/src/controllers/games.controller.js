@@ -32,4 +32,16 @@ async function getGamesByGenre(req, res, next) {
   } catch (error) { return next(error); }
 }
 
-module.exports = { getGameById, searchGames, getPopularGames, getGamesByGenre };
+async function getDashboard(req, res, next) {
+  try {
+    return res.json(await gamesService.getDashboard(req.query.limit, req.query.genres));
+  } catch (error) { return next(error); }
+}
+
+async function getAdminStats(req, res, next) {
+  try {
+    return res.json({ data: await gamesService.getAdminStats() });
+  } catch (error) { return next(error); }
+}
+
+module.exports = { getGameById, searchGames, getPopularGames, getGamesByGenre, getDashboard, getAdminStats };

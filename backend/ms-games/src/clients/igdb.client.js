@@ -3,6 +3,7 @@ const { queryGames } = require('../config/igdb');
 const FIELDS = [
   'id', 'name', 'slug', 'summary', 'storyline', 'first_release_date',
   'cover.image_id', 'genres.name', 'platforms.name', 'game_modes.name',
+  'involved_companies.company.name', 'involved_companies.developer', 'involved_companies.publisher',
   'player_perspectives.name', 'rating', 'rating_count', 'total_rating',
   'total_rating_count', 'url', 'updated_at'
 ].join(',');

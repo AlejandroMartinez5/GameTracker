@@ -6,6 +6,7 @@ const gameSchema = new mongoose.Schema({
   name: { type: String, required: true }, slug: String, summary: String, storyline: String,
   firstReleaseDate: Date, cover: { imageId: String, url: String }, genres: [referenceSchema],
   platforms: [referenceSchema], gameModes: [referenceSchema], playerPerspectives: [referenceSchema],
+  developers: [referenceSchema], publishers: [referenceSchema],
   rating: Number, ratingCount: Number, totalRating: Number, totalRatingCount: Number, url: String,
   igdbUpdatedAt: Date, lastSyncedAt: { type: Date, default: Date.now }
 }, { timestamps: true, collection: 'games' });
