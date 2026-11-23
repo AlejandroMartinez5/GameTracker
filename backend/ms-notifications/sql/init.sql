@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   title VARCHAR(140) NOT NULL,
   body TEXT NOT NULL,
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  event_id VARCHAR(255),
   read_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -19,4 +20,10 @@ WHERE read_at IS NULL;
 
 CREATE INDEX IF NOT EXISTS idx_notifications_type
 ON notifications (type);
+
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS event_id VARCHAR(255);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_event_id
+ON notifications (event_id)
+WHERE event_id IS NOT NULL;
 

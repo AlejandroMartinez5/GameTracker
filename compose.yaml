@@ -107,10 +107,13 @@ services:
     environment:
       PORT: "3003"
       MAX_IMAGE_UPLOAD_BYTES: ${MAX_IMAGE_UPLOAD_BYTES:-5242880}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-gametracker}:${RABBITMQ_PASSWORD:-gametracker_dev}@rabbitmq:5672
     ports:
       - "127.0.0.1:3003:3003"
     depends_on:
       mongo:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     volumes:
       - type: bind
@@ -324,6 +327,7 @@ services:
     environment:
       PORT: "3007"
       DATABASE_URL: postgresql://gametracker:${MODERATION_DB_PASSWORD:-gametracker_dev}@moderation-db:5432/gametracker_moderation
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-gametracker}:${RABBITMQ_PASSWORD:-gametracker_dev}@rabbitmq:5672
       JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
       AUTH_SERVICE_URL: http://ms-auth:3003/api/auth
       REVIEWS_SERVICE_URL: http://ms-reviews:3005/api
@@ -335,6 +339,8 @@ services:
       ms-auth:
         condition: service_healthy
       ms-reviews:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     volumes:
       - type: bind

@@ -7,6 +7,7 @@ const emailVerification = require("./email-verification.service");
 const mailService = require("./mail.service");
 const profileClient = require("../clients/profile.client");
 const statsClient = require("../clients/stats.client");
+const userEvents = require("../utils/user-events.util");
 
 const PASSWORD_SALT_ROUNDS = 10;
 const PASSWORD_MIN_LENGTH = 8;
@@ -205,6 +206,8 @@ async function registerUser(data = {}) {
       };
     }
 
+    userEvents.publishUserCreated(user);
+
     return { user: toUserResponse(user), verification };
   } catch (error) {
     if (error.code === DUPLICATE_KEY_ERROR) {
@@ -284,7 +287,13 @@ async function updateProfile(id, { name, username, image = null } = {}) {
   }
 
   try {
-    return toUserResponse(await userRepository.updateUserById(id, changes));
+    const updatedUser = await userRepository.updateUserById(id, changes);
+
+    if (changes.username && changes.username !== user.username) {
+      userEvents.publishUsernameUpdated(updatedUser);
+    }
+
+    return toUserResponse(updatedUser);
   } catch (error) {
     if (error.code === DUPLICATE_KEY_ERROR) {
       throw createError("El username ya esta registrado", 409);
@@ -368,6 +377,10 @@ async function resetPassword({ code, token, password } = {}) {
     passwordHash
   );
 
+  if (updatedUser) {
+    userEvents.publishPasswordReset(updatedUser._id);
+  }
+
   if (!updatedUser) {
     throw createError("Código de recuperación inválido o expirado", 400);
   }
@@ -397,6 +410,10 @@ async function changePassword(id, { currentPassword, newPassword } = {}) {
   const passwordHash = await bcrypt.hash(newPassword, PASSWORD_SALT_ROUNDS);
   const updatedUser = await userRepository.updatePassword(id, user.password, passwordHash);
 
+  if (updatedUser) {
+    userEvents.publishPasswordChanged(updatedUser._id);
+  }
+
   if (!updatedUser) {
     throw createError("No se pudo actualizar la contraseña", 409);
   }
@@ -423,6 +440,15 @@ async function unbanUser(id, adminId) {
     moderationReason: null,
     moderatedAt: new Date(),
     moderatedByAuthId: adminId
+  });
+
+  userEvents.publishModerationNotification({
+    recipientAuthId: updatedUser._id,
+    actorAuthId: adminId,
+    type: "account.unbanned",
+    title: "Cuenta reactivada",
+    body: "Tu cuenta fue reactivada por un administrador.",
+    metadata: { authId: String(updatedUser._id) }
   });
 
   return toAdminUserResponse(updatedUser);

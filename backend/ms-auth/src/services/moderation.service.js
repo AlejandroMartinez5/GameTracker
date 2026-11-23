@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const User = require('../models/user.model');
+const userEvents = require('../utils/user-events.util');
 const error = (message, status) => Object.assign(new Error(message), { status });
 
 async function findUser(id) {
@@ -45,6 +46,21 @@ async function moderate(req, res) {
     accountStatus: suspendedUntil ? 'SUSPENDED' : 'BANNED', suspendedUntil,
     moderationReason: reason?.trim() || null, moderatedAt: new Date(), moderatedByAuthId: req.user.sub
   } }, { new: true, runValidators: true });
+  userEvents.publishModerationNotification({
+    recipientAuthId: updated._id,
+    actorAuthId: req.user.sub,
+    type: updated.accountStatus === 'BANNED' ? 'account.banned' : 'account.suspended',
+    title: updated.accountStatus === 'BANNED' ? 'Cuenta baneada' : 'Cuenta suspendida',
+    body: updated.accountStatus === 'BANNED'
+      ? 'Tu cuenta fue baneada permanentemente por moderaciÃ³n.'
+      : `Tu cuenta fue suspendida hasta ${updated.suspendedUntil?.toISOString() || 'nuevo aviso'}.`,
+    metadata: {
+      authId: String(updated._id),
+      accountStatus: updated.accountStatus,
+      suspendedUntil: updated.suspendedUntil,
+      reason: updated.moderationReason
+    }
+  });
   res.json({ data: { authId: String(updated._id), accountStatus: updated.accountStatus, suspendedUntil: updated.suspendedUntil } });
 }
 async function removeProfilePhoto(req, res) {
@@ -55,6 +71,14 @@ async function removeProfilePhoto(req, res) {
       profileImageData: null,
       profileImageMimeType: null
     }
+  });
+  userEvents.publishModerationNotification({
+    recipientAuthId: user._id,
+    actorAuthId: req.user.sub,
+    type: 'moderation.profile_image_removed',
+    title: 'Imagen de perfil eliminada',
+    body: 'Un administrador eliminÃ³ tu imagen de perfil por moderaciÃ³n.',
+    metadata: { authId: String(user._id) }
   });
   res.json({ data: { authId: String(user._id), profileImage: null } });
 }

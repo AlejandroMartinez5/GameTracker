@@ -2,6 +2,7 @@ const moderationRepository = require("../repositories/moderation.repository");
 const authClient = require("../clients/auth.client");
 const reviewsClient = require("../clients/reviews.client");
 const usersClient = require("../clients/users.client");
+const { safePublishNotification } = require("../utils/notification-events.util");
 const {
   getPaginationParams,
   buildPaginationMeta
@@ -236,7 +237,7 @@ const createReport = async (
   });
 
   try {
-    return await moderationRepository.createReport({
+    const report = await moderationRepository.createReport({
       reporterAuthId: user.authId,
       targetType: target.targetType,
       targetId: target.targetId,
@@ -244,6 +245,21 @@ const createReport = async (
       description: normalizedDescription,
       targetSnapshot
     });
+
+    await safePublishNotification({
+      recipientAuthId: user.authId,
+      actorAuthId: null,
+      type: "report.created",
+      title: "Reporte recibido",
+      body: "Tu reporte fue enviado correctamente y queda pendiente de revisión.",
+      metadata: {
+        reportId: report.id,
+        targetType: target.targetType,
+        targetId: target.targetId
+      }
+    });
+
+    return report;
   } catch (error) {
     if (error.code === "23505") {
       const customError = new Error("Ya tienes un reporte pendiente para este contenido");
@@ -328,6 +344,19 @@ const dismissReport = async ({ reportId, note }, admin) => {
     targetId: report.target_id,
     note: optionalText(note, "note", 2000),
     metadata: {}
+  });
+
+  await safePublishNotification({
+    recipientAuthId: report.reporter_auth_id,
+    actorAuthId: admin.authId,
+    type: "report.dismissed",
+    title: "Reporte descartado",
+    body: "Tu reporte fue revisado y descartado por moderaciÃ³n.",
+    metadata: {
+      reportId: report.id,
+      targetType: report.target_type,
+      targetId: report.target_id
+    }
   });
 
   return result;
@@ -462,6 +491,20 @@ const executeAction = async ({ reportId, actionType, note, duration }, admin, to
     metadata: {
       externalResult,
       suspendedUntil: suspendedUntil || null
+    }
+  });
+
+  await safePublishNotification({
+    recipientAuthId: report.reporter_auth_id,
+    actorAuthId: admin.authId,
+    type: "report.action_taken",
+    title: "Reporte atendido",
+    body: "Tu reporte fue revisado y se tomÃ³ una acciÃ³n.",
+    metadata: {
+      reportId: report.id,
+      actionType: normalizedActionType,
+      targetType: report.target_type,
+      targetId: report.target_id
     }
   });
 

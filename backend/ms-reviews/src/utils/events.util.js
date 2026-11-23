@@ -109,10 +109,55 @@ const publishCommentLiked = ({ comment, actorAuthId }) => {
   });
 };
 
+const publishCommentDeleted = ({ comment, actorAuthId }) => {
+  return safePublish("notification.created", {
+    actorAuthId,
+    recipientAuthId: comment.auth_id,
+    type: "comment.deleted",
+    title: "Comentario eliminado",
+    body: "Tu comentario fue eliminado por moderaciÃ³n.",
+    metadata: {
+      commentId: comment.id,
+      reviewId: comment.review_id
+    }
+  });
+};
+
+const publishReviewImageRemoved = ({ review, actorAuthId }) => {
+  return safePublish("notification.created", {
+    actorAuthId,
+    recipientAuthId: review.auth_id,
+    type: "moderation.review_image_removed",
+    title: "Imagen de reseÃ±a eliminada",
+    body: "Un administrador eliminÃ³ la imagen de tu reseÃ±a por moderaciÃ³n.",
+    metadata: {
+      reviewId: review.id,
+      igdbId: review.igdb_id
+    }
+  });
+};
+
+const publishCommentImageRemoved = ({ comment, actorAuthId }) => {
+  return safePublish("notification.created", {
+    actorAuthId,
+    recipientAuthId: comment.auth_id,
+    type: "moderation.comment_image_removed",
+    title: "Imagen de comentario eliminada",
+    body: "Un administrador eliminÃ³ la imagen de tu comentario por moderaciÃ³n.",
+    metadata: {
+      commentId: comment.id,
+      reviewId: comment.review_id
+    }
+  });
+};
+
 module.exports = {
   publishReviewCreated,
   publishReviewDeleted,
   publishReviewLiked,
   publishReviewCommented,
-  publishCommentLiked
+  publishCommentLiked,
+  publishCommentDeleted,
+  publishReviewImageRemoved,
+  publishCommentImageRemoved
 };

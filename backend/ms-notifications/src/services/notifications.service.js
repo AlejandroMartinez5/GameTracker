@@ -19,6 +19,11 @@ const text = (value, field, max) => {
   return normalized;
 };
 
+const optionalEventId = (value) => {
+  if (value === undefined || value === null || value === "") return null;
+  return text(value, "eventId", 255);
+};
+
 const metadata = (value) => {
   if (value === undefined || value === null) return {};
   if (typeof value !== "object" || Array.isArray(value)) fail("metadata debe ser un objeto JSON");
@@ -31,7 +36,8 @@ const createNotification = async (data = {}) => repository.create({
   type: text(data.type, "type", 80),
   title: text(data.title, "title", 140),
   body: text(data.body, "body", 1000),
-  metadata: metadata(data.metadata)
+  metadata: metadata(data.metadata),
+  eventId: optionalEventId(data.eventId)
 });
 
 const normalizeFilters = (query = {}) => {

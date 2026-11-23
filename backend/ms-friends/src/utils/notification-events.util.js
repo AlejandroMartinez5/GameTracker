@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const amqp = require("amqplib");
 
 const EXCHANGE_NAME = "notification_events";
@@ -42,7 +43,9 @@ const connectBroker = async () => {
 const publishNotificationEvent = async (payload) => {
   const { channel: brokerChannel } = await connectBroker();
   const event = {
+    eventId: crypto.randomUUID(),
     type: "notification.created",
+    occurredAt: new Date().toISOString(),
     payload
   };
 

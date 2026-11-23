@@ -1,6 +1,8 @@
 ﻿const service = require('../services/auth.service');
 const emailVerification = require('../services/email-verification.service');
 
+const userEvents = require('../utils/user-events.util');
+
 const imageData = (file) => file ? {
   data: file.buffer,
   mimeType: file.mimetype
@@ -39,7 +41,15 @@ const resendVerification = async (req, res) => {
 
 const verifyEmail = async (req, res) => {
   const user = await service.getCurrentUser(req.user.sub);
-  res.json(await emailVerification.verifyCode(user, req.body));
+  const wasVerified = user.emailVerified;
+  const result = await emailVerification.verifyCode(user, req.body);
+
+  if (!wasVerified && result.emailVerified) {
+    const verifiedUser = await service.getCurrentUser(req.user.sub);
+    userEvents.publishEmailVerified(verifiedUser);
+  }
+
+  res.json(result);
 };
 
 const updateProfile = async (req, res) => res.json({

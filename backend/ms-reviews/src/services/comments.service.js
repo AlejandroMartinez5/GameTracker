@@ -135,6 +135,7 @@ const deleteComment = async (commentId, user) => {
   }
 
   await commentsRepository.deleteComment(comment.id);
+  events.publishCommentDeleted({ comment, actorAuthId: user.authId });
 
   return { message: "Comentario eliminado correctamente" };
 };
@@ -149,6 +150,11 @@ const removeCommentImage = async (commentId, user) => {
   const updatedComment = await commentsRepository.updateCommentImage({
     commentId: comment.id,
     imageUrl: null
+  });
+
+  events.publishCommentImageRemoved({
+    comment,
+    actorAuthId: user.authId
   });
 
   return {

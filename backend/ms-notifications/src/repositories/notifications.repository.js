@@ -1,12 +1,14 @@
 const { pool } = require("../config/db");
 
-const create = async ({ recipientAuthId, actorAuthId = null, type, title, body, metadata = {} }) => {
+const create = async ({ recipientAuthId, actorAuthId = null, type, title, body, metadata = {}, eventId = null }) => {
   const result = await pool.query(
-    `INSERT INTO notifications (recipient_auth_id, actor_auth_id, type, title, body, metadata)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [recipientAuthId, actorAuthId, type, title, body, JSON.stringify(metadata)]
+    `INSERT INTO notifications (recipient_auth_id, actor_auth_id, type, title, body, metadata, event_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (event_id) WHERE event_id IS NOT NULL DO NOTHING
+     RETURNING *`,
+    [recipientAuthId, actorAuthId, type, title, body, JSON.stringify(metadata), eventId]
   );
-  return result.rows[0];
+  return result.rows[0] || null;
 };
 
 const buildConditions = (authId, filters) => {

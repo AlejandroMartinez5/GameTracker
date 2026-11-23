@@ -257,6 +257,11 @@ const removeReviewImage = async (reviewId, user) => {
     imageUrl: null
   });
 
+  events.publishReviewImageRemoved({
+    review,
+    actorAuthId: user.authId
+  });
+
   return { reviewId: review.id, imageUrl: null, review: updatedReview };
 };
 

@@ -19,13 +19,15 @@ const mapReviewEvent = (event) => {
   return {
     recipientAuthId: payload.recipientAuthId,
     actorAuthId: payload.actorAuthId,
-    type: template[0], title: template[1], body: template[2],
+    type: template[0], title: template[1], body: template[2], eventId: event.eventId,
     metadata: { ...payload, sourceEvent: event.type }
   };
 };
 
 const normalizeEvent = (event) => {
-  if (event.type === "notification.created") return event.payload || {};
+  if (event.type === "notification.created") {
+    return { ...(event.payload || {}), eventId: event.eventId };
+  }
   return mapReviewEvent(event);
 };
 

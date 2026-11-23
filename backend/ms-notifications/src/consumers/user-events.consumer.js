@@ -30,6 +30,7 @@ const consumeUserEvents = async () => {
           await service.createEventNotification({
             recipientAuthId: payload.authId,
             type: template[0], title: template[1], body: template[2](payload),
+            eventId: event.eventId,
             metadata: { sourceEvent: event.type }
           });
         }
