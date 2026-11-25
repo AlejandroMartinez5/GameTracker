@@ -114,6 +114,50 @@ services:
       timeout: 5s
       retries: 5
 
+  ms-gateway:
+    build:
+      context: ./backend/ms-gateway
+    restart: unless-stopped
+    init: true
+    environment:
+      PORT: "8080"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      AUTH_SERVICE_URL: http://ms-auth:3003
+      GAMES_SERVICE_URL: http://ms-games:3009
+      FRIENDS_SERVICE_URL: http://ms-friends:3006
+      USER_LIBRARY_SERVICE_URL: http://ms-user-library:3010
+      NOTIFICATIONS_SERVICE_URL: http://ms-notifications:3008
+      ACHIEVEMENTS_SERVICE_URL: http://ms-achievements:3011
+      REVIEWS_SERVICE_URL: http://ms-reviews:3005
+      MODERATION_SERVICE_URL: http://ms-moderation:3007
+      RATE_LIMIT_WINDOW_MS: "60000"
+      RATE_LIMIT_MAX: "300"
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      ms-auth:
+        condition: service_healthy
+      ms-games:
+        condition: service_healthy
+      ms-friends:
+        condition: service_healthy
+      ms-user-library:
+        condition: service_healthy
+      ms-notifications:
+        condition: service_healthy
+      ms-achievements:
+        condition: service_healthy
+      ms-reviews:
+        condition: service_healthy
+      ms-moderation:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   ms-auth:
     build:
       context: ./backend/ms-auth
